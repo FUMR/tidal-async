@@ -73,7 +73,8 @@ class TidalObject(object):
         return self.dict['id']
 
     def __getattr__(self, attr):
-        return self.dict.get(attr)
+        # snake_case to camelCase for making access moar pythonic
+        return self.dict.get("".join([c if i == 0 else c.capitalize() for i, c in enumerate(attr.split('_'))]))
 
 
 class Album(TidalObject):
