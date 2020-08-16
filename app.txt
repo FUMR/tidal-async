@@ -1,0 +1,36 @@
+# APP generates this URL and opens it in webview
+GET https://login.tidal.com/authorize
+    ?response_type=code
+    &redirect_uri=https%3A%2F%2Ftidal.com%2Fandroid%2Flogin%2Fauth
+    &client_id=<client_id from .apk>
+    &lang=pl_PL
+    &appMode=android
+    &client_unique_key=<idk wtf, probably android id>
+    &code_challenge=<code_challenge from https://tools.ietf.org/html/rfc7636#appendix-B>
+    &code_challenge_method=S256
+    &restrict_signup=true
+
+# after successful login in webview it's getting redirected to this url which we need:
+GET https://tidal.com/android/login/auth
+    ?code=<auth code>
+    &state=na
+    &lang=pl
+    &appMode=android
+
+# we need to generate this url and call it to get token for Authorize header
+POST https://auth.tidal.com/v1/oauth2/token
+HEADERS
+    Content-Type: application/x-www-form-urlencoded
+    Content-Length: 928
+    Host: auth.tidal.com
+    Connection: close
+    Accept-Encoding: gzip, deflate
+    User-Agent: okhttp/3.13.1
+BODY
+    code=<auth code>
+    &client_id=<client_id from .apk>
+    &grant_type=authorization_code
+    &redirect_uri=https%3A%2F%2Ftidal.com%2Fandroid%2Flogin%2Fauth
+    &scope=r_usr%20w_usr%20w_sub
+    &code_verifier=<code_verifier from https://tools.ietf.org/html/rfc7636#appendix-B>
+    &client_unique_key=<idk wtf, probably android id>
