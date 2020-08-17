@@ -9,6 +9,8 @@ from zipfile import ZipFile
 import aiohttp
 from androguard.core.bytecodes.axml import ARSCParser
 
+from AsyncSeekableBinaryHTTPFile import AsyncSeekableBinaryHTTPFile
+
 
 # TODO: playlists
 # TODO: artists
@@ -56,7 +58,7 @@ class Cover(object):
 
 class TidalObject(object):
     def __init__(self, tidal_session, dict_):
-        self.session = tidal_session
+        self.sess = tidal_session
         self.dict = dict_
 
     async def reload_info(self):
@@ -79,8 +81,8 @@ class TidalObject(object):
 
 class Album(TidalObject):
     async def reload_info(self):
-        resp = await self.session.get(f"/v1/albums/{self.id}/tracks", params={
-            "countryCode": self.session.country_code
+        resp = await self.sess.get(f"/v1/albums/{self.id}/tracks", params={
+            "countryCode": self.sess.country_code
         })
         resp.raise_for_status()
         self.dict = await resp.json()
@@ -97,13 +99,14 @@ class Album(TidalObject):
     async def tracks(self):
         if 'items' not in self.dict:
             await self.reload_info()
-        return [Track(self.session, track) for track in self.dict['items']]
+        return [Track(self.sess, track) for track in self.dict['items']]
 
 
 class Track(TidalObject):
+    # TODO: lyrics
     async def reload_info(self):
-        resp = await self.session.get(f"/v1/tracks/{self.id}", params={
-            "countryCode": self.session.country_code
+        resp = await self.sess.get(f"/v1/tracks/{self.id}", params={
+            "countryCode": self.sess.country_code
         })
         resp.raise_for_status()
         self.dict = await resp.json()
@@ -115,7 +118,7 @@ class Track(TidalObject):
 
     @property
     def album(self):
-        return Album(self.session, self.dict['album'])
+        return Album(self.sess, self.dict['album'])
 
     @property
     def cover(self):
@@ -127,7 +130,7 @@ class Track(TidalObject):
 
     async def _playbackinfopostpaywall(self, audio_quality=AudioQuality.Master):
         # TODO: audioMode
-        resp = await self.session.get(f"/v1/tracks/{self.id}/playbackinfopostpaywall", params={
+        resp = await self.sess.get(f"/v1/tracks/{self.id}/playbackinfopostpaywall", params={
             "playbackmode": "STREAM", "assetpresentation": "FULL",
             "audioquality": audio_quality.value
         })
@@ -142,7 +145,8 @@ class Track(TidalObject):
     async def stream_url(self, audio_quality=AudioQuality.Master):
         return (await self._stream_manifest(audio_quality))['urls'][0]
 
-    # TODO: filelike
+    async def get_async_file(self, audio_quality=AudioQuality.Master):
+        return await AsyncSeekableBinaryHTTPFile.create(await self.stream_url(audio_quality), self.title)
 
 
 async def cli_auth_url_getter(authorization_url):
