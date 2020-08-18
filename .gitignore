@@ -1,2 +1,6 @@
 venv/
 .idea/
+tmp/
+dist/
+*.egg-info/
+poetry.lock
