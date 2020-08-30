@@ -163,11 +163,11 @@ class Track(TidalObject):
 
         tags = {
             # general metatags
-            'artist': self.artist.name,
+            'artist': self.artist['name'],
             'title': parse_title(self, self.artists),
 
             # album related metatags
-            'albumartist': album.artist.name,
+            'albumartist': album.artist['name'],
             'album': parse_title(album),
             'date': str(album.year),
 
