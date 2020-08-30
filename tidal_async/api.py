@@ -2,8 +2,10 @@ import base64
 import enum
 import json
 from typing import Callable, Optional, Union
+from urllib.parse import urlparse
 
 from tidal_async.utils import snake_to_camel, parse_title
+from tidal_async.exceptions import InvalidURL
 
 try:
     from httpseekablefile import AsyncSeekableHTTPFile
@@ -77,8 +79,20 @@ class Album(TidalObject):
 
     @classmethod
     async def from_url(cls, tidal_session, url):
-        # TODO
-        raise NotImplemented
+        parsed_url = urlparse(url)
+        name, domain = parsed_url.hostname.rsplit('.', 2)[-2:]
+        path = parsed_url.path
+
+        if name != 'tidal' or domain != 'com':
+            raise InvalidURL
+
+        if 'album/' not in path:
+            raise InvalidURL
+
+        id = path.split('album/', 1)[1].split('/')[0]
+
+        album = await Album.from_id(tidal_session, id)
+        return album
 
     @property
     def cover(self):
@@ -100,8 +114,20 @@ class Track(TidalObject):
 
     @classmethod
     async def from_url(cls, tidal_session, url):
-        # TODO
-        raise NotImplemented
+        parsed_url = urlparse(url)
+        name, domain = parsed_url.hostname.rsplit('.', 2)[-2:]
+        path = parsed_url.path
+
+        if name != 'tidal' or domain != 'com':
+            raise InvalidURL
+
+        if 'track/' not in path:
+            raise InvalidURL
+
+        id = path.split('track/', 1)[1].split('/')[0]
+
+        track = await Track.from_id(tidal_session, id)
+        return track
 
     @property
     def album(self):

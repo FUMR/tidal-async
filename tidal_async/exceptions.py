@@ -13,3 +13,7 @@ class AuthorizationError(Exception):
 
 class UnknownSession(Exception):
     pass
+
+
+class InvalidURL(Exception):
+    pass
