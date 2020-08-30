@@ -22,20 +22,20 @@ async def main(apk_file):
         #     print("\n")
 
         album = await sess.album(22563744)
-        fname = lambda t: f"{t.track_number:02d}. {t.title}.flac"
+        fname = lambda t: f"{t.track_number:02d}. {t.title}.flac".replace('/', '|').replace('\\', '|')
         files = (await t.get_async_file(filename=fname) for t in await album.tracks())
         coversizes = len(await album.cover.get_async_file()) * len(await album.tracks())
 
         # zip file overhead
         # per file
-        #     30 + len(name) (file header)
+        #     30 + len(filename) (file header)
         #     file
         #     16
         #
         # footer
         #     per file
         #         46 (central directory)
-        #         len(name)
+        #         len(filename)
         #         0 (extra data)
         #         0 (comment)
         #     22 (end-of-zip-archive record)
@@ -54,7 +54,7 @@ async def main(apk_file):
                 async for f in files:
                     filesizes += len(f)
                     zip_data += 30 + 16 + 46 + 2 * len(f.name)
-                    with zipf.open(f.name.replace('/', '|').replace('\\', '|'), mode='w') as fz:
+                    with zipf.open(f.name, mode='w') as fz:
                         print(f.name)
                         nf.toggle_print_write()
                         async with f:

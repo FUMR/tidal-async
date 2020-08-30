@@ -11,8 +11,9 @@ class DebugFile(RawIOBase):
 
         self.written = 0
         self.writes = 0
-        self.read = 0
+        self._read = 0
         self.reads = 0
+        self.pos = 0
 
         print(f"{name} CREATED")
 
@@ -29,20 +30,23 @@ class DebugFile(RawIOBase):
 
     def seek(self, offset, whence=0):
         if not self.seekable():
-            print(f"{self.name} SEEKING, OOPS")
+            print(f"{self.name} SEEKING TO {offset}, {whence}, OOPS")
             raise OSError
         else:
             print(f"{self.name} SEEKING TO {offset}, {whence}")
-            return self.proxied_file.seek(offset, whence)
+            out = self.proxied_file.seek(offset, whence)
+            self.pos = out
+            return out
 
     def tell(self):
-        n = self.written
+        n = self.pos
         print(f"{self.name} TELL {n}")
         return n
 
     def write(self, data):
         n = len(data)
         self.written += n
+        self.pos += n
         self.writes += 1
         if self.print_write:
             print(f"{self.name} WRITE {n} B")
@@ -58,13 +62,15 @@ class DebugFile(RawIOBase):
         else:
             raise OSError
         n = len(data)
-        self.read += n
+        self._read += n
+        self.pos += n
         self.reads += 1
         if self.print_read:
             print(f"{self.name} READ {n} B")
+        return data
 
     def close(self):
-        print(f"{self.name} CLOSING - WRITTEN {self.written} B IN {self.writes} WRITES, READ {self.read} B IN {self.reads} READS")
+        print(f"{self.name} CLOSING - WRITTEN {self.written} B IN {self.writes} WRITES, READ {self._read} B IN {self.reads} READS")
 
     def __enter__(self):
         print(f"{self.name} ENTERING")

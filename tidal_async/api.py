@@ -3,6 +3,8 @@ import enum
 import json
 from typing import Callable, Optional, Union
 
+from tidal_async.utils import snake_to_camel, parse_title
+
 try:
     from httpseekablefile import AsyncSeekableHTTPFile
 except ImportError:
@@ -30,14 +32,13 @@ class Cover(object):
         self.sess = tidal_session
         self.id = id_
 
-    @property
     def url(self, size=(320, 320)):
         # Valid resolutions: 80x80, 160x160, 320x320, 640x640, 1280x1280
         return f"https://resources.tidal.com/images/{self.id.replace('-', '/')}/{size[0]}x{size[1]}.jpg"
 
     if 'AsyncSeekableHTTPFile' in globals():
-        async def get_async_file(self, filename: Optional[str] = None):
-            return await AsyncSeekableHTTPFile.create(self.url, filename, self.sess.sess)
+        async def get_async_file(self, filename: Optional[str] = None, size=(320, 320)):
+            return await AsyncSeekableHTTPFile.create(self.url(size), filename, self.sess.sess)
 
 
 class TidalObject(object):
@@ -54,13 +55,11 @@ class TidalObject(object):
         await obj.reload_info()
         return obj
 
-    @property
-    def id(self):
-        return self.dict['id']
-
     def __getattr__(self, attr):
-        # snake_case to camelCase for making access moar pythonic
-        return self.dict.get("".join([c if i == 0 else c.capitalize() for i, c in enumerate(attr.split('_'))]))
+        return self.dict.get(snake_to_camel(attr))
+
+    def __contains__(self, item):
+        return snake_to_camel(item) in self.dict
 
 
 class Album(TidalObject):
@@ -131,6 +130,41 @@ class Track(TidalObject):
     
     async def stream_url(self, audio_quality=AudioQuality.Master):
         return (await self._stream_manifest(audio_quality))['urls'][0]
+
+    async def metadata_tags(self):
+        album = self.album
+        await album.reload_info()
+
+        tags = {
+            # general metatags
+            'artist': self.artist.name,
+            'title': parse_title(self, self.artists),
+
+            # album related metatags
+            'albumartist': album.artist.name,
+            'album': parse_title(album),
+            'date': str(album.year),
+
+            # track/disc position metatags
+            'discnumber': str(self.volumeNumber),
+            'disctotal': str(album.numberOfVolumes),
+            'tracknumber': str(self.trackNumber),
+            'tracktotal': str(album.numberOfTracks)
+        }
+
+        # Tidal sometimes returns null for track copyright
+        if 'copyright' in self and self.copyright:
+            tags['copyright'] = self.copyright
+        elif 'copyright' in album and album.copyright:
+            tags['copyright'] = album.copyright
+
+        # identifiers for later use in own music libraries
+        if 'isrc' in self and self.isrc:
+            tags['isrc'] = self.isrc
+        if 'upc' in album and album.upc:
+            tags['upc'] = album.upc
+
+        return tags
 
     if 'AsyncSeekableHTTPFile' in globals():
         async def get_async_file(self, audio_quality=AudioQuality.Master, filename: Optional[Union[Callable[['Track'], str], str]] = None):
