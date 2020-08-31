@@ -104,7 +104,7 @@ class TidalSession(object):
         return await self.request("POST", url, **kwargs)
 
     async def logout(self):
-        # TODO [$5f4d4bcdf82893000820da2b]: TidalSession.logout
+        # TODO [#14]: TidalSession.logout
         # WTF, android app doesn't send any request when clicking "Log out" button
         raise NotImplemented
 
@@ -138,7 +138,7 @@ class TidalSession(object):
         return await Album.from_id(self, album_id)
 
     # TODO [#7]: Move _find_tidal_urls to the utils
-    # TODO [$5f4d4bcdf82893000820da2c]: Find urls and parse to objects from string
+    # TODO [#15]: Find urls and parse to objects from string
     #   eg. Parse chat message containing links to Tidal and return all corresponding objects
     def _find_tidal_urls(self, str):
         words = str.split(' ')
