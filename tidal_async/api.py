@@ -11,7 +11,6 @@ except ImportError:
     pass
 
 
-# TODO: playlists
 # TODO: artists
 
 
@@ -62,18 +61,63 @@ class TidalObject(object):
         return snake_to_camel(item) in self.dict
 
 
+class Playlist(TidalObject):
+    async def reload_info(self):
+        resp = await self.sess.get(f"/v1/playlists/{self.id}", params={
+            "countryCode": self.sess.country_code
+        })
+
+        self.dict.update(await resp.json())
+
+    @classmethod
+    async def from_url(cls, tidal_session, url):
+        return await Playlist.from_id(tidal_session, id_from_url(url, 'playlist'))
+
+    @property
+    def cover(self):
+        return Cover(self.sess, self.dict['image'])
+
+    async def _fetch_items(self, items = [], offset = 0):
+        limit = 50 # Limit taken from the request done by tidal website
+
+        resp = await self.sess.get(f"/v1/playlists/{self.id}/items", params={
+            "countryCode": self.sess.country_code,
+            "offset": offset,
+            "limit": limit,
+
+            # NOTE: Following parameters are from the browser API, dunno if needed
+            "deviceType": "BROWSER",
+            "locale": "en_US"
+        })
+
+        json = await resp.json()
+
+        if offset + len(json['items']) >= json['totalNumberOfItems']:
+            return items + json['items']
+
+        return await self._fetch_items(items + json['items'], offset + limit)
+
+    async def tracks(self):
+        if 'items' not in self.dict:
+            self.dict['items'] = await self._fetch_items()
+
+        tracks = []
+        for item in self.dict['items']:
+
+            # TODO: Find another types and see what they are
+            if item['type'] == 'track':
+                tracks.append(item['item'])
+
+        return [Track(self.sess, track) for track in tracks]
+
+
 class Album(TidalObject):
     async def reload_info(self):
         resp = await self.sess.get(f"/v1/albums/{self.id}", params={
             "countryCode": self.sess.country_code
         })
-        self.dict = await resp.json()
 
-        # TODO: move to .tracks()
-        resp = await self.sess.get(f"/v1/albums/{self.id}/tracks", params={
-            "countryCode": self.sess.country_code
-        })
-        self.dict.update(await resp.json())
+        self.dict = await resp.json()
 
     @classmethod
     async def from_url(cls, tidal_session, url):
@@ -85,7 +129,12 @@ class Album(TidalObject):
 
     async def tracks(self):
         if 'items' not in self.dict:
-            await self.reload_info()
+            resp = await self.sess.get(f"/v1/albums/{self.id}/tracks", params={
+                "countryCode": self.sess.country_code
+            })
+
+            self.dict.update(await resp.json())
+
         return [Track(self.sess, track) for track in self.dict['items']]
 
 
