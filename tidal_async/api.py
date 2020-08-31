@@ -67,6 +67,7 @@ class Playlist(TidalObject):
             "countryCode": self.sess.country_code
         })
 
+        # NOTE: I'm updating self.dict and not reassingning it as the return ftom the api does not contain the `id` key
         self.dict.update(await resp.json())
 
     @classmethod
