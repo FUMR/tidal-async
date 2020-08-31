@@ -12,7 +12,7 @@ except ImportError:
     pass
 
 
-# TODO [$5f4c9c3f800d4900079afb69]: artists
+# TODO: artists
 
 
 class AudioQuality(enum.Enum):
@@ -23,7 +23,7 @@ class AudioQuality(enum.Enum):
 
 
 class AudioMode(enum.Enum):
-    # TODO [$5f4c9c3f800d4900079afb6a]: find more modes
+    # TODO: find more modes
     Stereo = "STEREO"
 
 
@@ -87,7 +87,7 @@ class TidalObject(object):
 class Track(TidalObject):
     urlname = 'track'
 
-    # TODO [$5f4c9c3f800d4900079afb6b]: lyrics
+    # TODO: lyrics
     async def reload_info(self):
         resp = await self.sess.get(f"/v1/tracks/{self.id}", params={
             "countryCode": self.sess.country_code
@@ -107,7 +107,7 @@ class Track(TidalObject):
         return AudioQuality(self.dict['audioQuality'])
 
     async def _playbackinfopostpaywall(self, audio_quality=AudioQuality.Master):
-        # TODO [$5f4c9c3f800d4900079afb6c]: audioMode
+        # TODO: audioMode
         resp = await self.sess.get(f"/v1/tracks/{self.id}/playbackinfopostpaywall", params={
             "playbackmode": "STREAM", "assetpresentation": "FULL",
             "audioquality": audio_quality.value
@@ -209,7 +209,7 @@ class Playlist(TidalObject):
         tracks = []
         for item in self.dict['items']:
 
-            # TODO [$5f4c9c3f800d4900079afb6d]: Find another types and see what they are
+            # TODO: Find another types and see what they are
             if item['type'] == 'track':
                 tracks.append(item['item'])
 
