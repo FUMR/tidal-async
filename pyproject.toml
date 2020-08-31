@@ -10,6 +10,9 @@ aiohttp = "^3.6"
 androguard = {version = "^3.3.5", optional = true}
 http-seekable-file = {git = "https://github.com/JuniorJPDJ/http-seekable-file", extras = ["async"], optional = true}
 
+[tool.poetry.dev-dependencies]
+pytest = "^5.2"
+
 [tool.poetry.extras]
 client_id = ["androguard"]
 filelike = ["http-seekable-file"]
