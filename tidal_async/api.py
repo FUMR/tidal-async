@@ -12,7 +12,7 @@ except ImportError:
     pass
 
 
-# TODO [#1]: artists
+# TODO [#1]: Artist object
 
 
 class AudioQuality(enum.Enum):
@@ -23,7 +23,7 @@ class AudioQuality(enum.Enum):
 
 
 class AudioMode(enum.Enum):
-    # TODO [#2]: find more modes
+    # TODO [#2]: Find more audio modes
     Stereo = "STEREO"
 
 
@@ -32,7 +32,7 @@ class Cover(object):
         self.sess = tidal_session
         self.id = id_
 
-    def url(self, size=(320, 320)):
+    def url(self, size=(640, 640)):
         # Valid resolutions: 80x80, 160x160, 320x320, 640x640, 1280x1280
         return f"https://resources.tidal.com/images/{self.id.replace('-', '/')}/{size[0]}x{size[1]}.jpg"
 
@@ -50,32 +50,34 @@ class TidalObject(object):
         raise NotImplemented
 
     @classmethod
-    async def from_id(cls, tidal_session, id_: int):
+    async def from_id(cls, tidal_session, id_):
         obj = cls(tidal_session, {'id': id_})
         await obj.reload_info()
         return obj
 
     @classmethod
+    async def _from_url(cls, tidal_session, url):
+        for child_cls in cls.__subclasses__():
+            try:
+                if hasattr(child_cls, 'urlname'):
+                    print(child_cls.urlname, id_from_url(url, child_cls.urlname))
+                    return await child_cls.from_id(tidal_session, id_from_url(url, child_cls.urlname))
+            except InvalidURL:
+                pass
+
+        # If none objects match url, then the url must be invalid
+        raise InvalidURL
+
+    @classmethod
     async def from_url(cls, tidal_session, url):
         if cls is TidalObject:
-            for child_cls in cls.__subclasses__():
-                try:
-                    if hasattr(child_cls, 'urlname'):
-                        print(child_cls.urlname, id_from_url(url, child_cls.urlname))
-                        return await child_cls.from_id(tidal_session, id_from_url(url, child_cls.urlname))
-
-                except InvalidURL:
-                    pass
-
-            # If none objects match url, then the url must be invalid
-            raise InvalidURL
+            return await cls._from_url(tidal_session, url)
 
         if hasattr(cls, 'urlname'):
             return await cls.from_id(tidal_session, id_from_url(url, cls.urlname))
 
         # Called class has no field urlname so from_url is not implemented
         raise NotImplemented
-        
 
     def __getattr__(self, attr):
         return self.dict.get(snake_to_camel(attr))
@@ -84,10 +86,10 @@ class TidalObject(object):
         return snake_to_camel(item) in self.dict
 
 
+# TODO [#3]: Downloading lyrics
 class Track(TidalObject):
     urlname = 'track'
 
-    # TODO [#3]: lyrics
     async def reload_info(self):
         resp = await self.sess.get(f"/v1/tracks/{self.id}", params={
             "countryCode": self.sess.country_code
@@ -107,7 +109,6 @@ class Track(TidalObject):
         return AudioQuality(self.dict['audioQuality'])
 
     async def _playbackinfopostpaywall(self, audio_quality=AudioQuality.Master):
-        # TODO [#4]: audioMode
         resp = await self.sess.get(f"/v1/tracks/{self.id}/playbackinfopostpaywall", params={
             "playbackmode": "STREAM", "assetpresentation": "FULL",
             "audioquality": audio_quality.value
@@ -119,10 +120,10 @@ class Track(TidalObject):
         data = await self._playbackinfopostpaywall(audio_quality)
         return json.loads(base64.b64decode(data['manifest']))
     
-    async def stream_url(self, audio_quality=AudioQuality.Master):
+    async def get_stream_url(self, audio_quality=AudioQuality.Master):
         return (await self._stream_manifest(audio_quality))['urls'][0]
 
-    async def metadata_tags(self):
+    async def get_metadata_tags(self):
         album = self.album
         await album.reload_info()
 
@@ -158,12 +159,13 @@ class Track(TidalObject):
         return tags
 
     if 'AsyncSeekableHTTPFile' in globals():
-        async def get_async_file(self, audio_quality=AudioQuality.Master, filename: Optional[Union[Callable[['Track'], str], str]] = None):
+        async def get_async_file(self, filename: Optional[Union[Callable[['Track'], str], str]] = None,
+                                 audio_quality=AudioQuality.Master):
             if callable(filename):
                 filename = filename(self)
             elif filename is None:
                 filename = self.title
-            return await AsyncSeekableHTTPFile.create(await self.stream_url(audio_quality), filename, self.sess.sess)
+            return await AsyncSeekableHTTPFile.create(await self.get_stream_url(audio_quality), filename, self.sess.sess)
 
 
 class Playlist(TidalObject):
@@ -182,17 +184,15 @@ class Playlist(TidalObject):
         # NOTE: It may be also self.dict['squareImage'], needs testing
         return Cover(self.sess, self.dict['image'])
 
-    async def _fetch_items(self, items = [], offset = 0):
-        limit = 50 # Limit taken from the request done by tidal website
+    async def _fetch_items(self, items=None, offset=0):
+        # TODO: Make Playlist._fetch_items call just one request
+        #   Playlist.tracks should call _fetch_items multiple times in LOOP (don't do recursion like that PLZ @wvffle)
+        limit = 50  # Limit taken from the request done by tidal website
 
         resp = await self.sess.get(f"/v1/playlists/{self.id}/items", params={
             "countryCode": self.sess.country_code,
             "offset": offset,
             "limit": limit,
-
-            # NOTE: Following parameters are from the browser API, dunno if needed
-            "deviceType": "BROWSER",
-            "locale": "en_US"
         })
 
         json = await resp.json()
@@ -200,16 +200,16 @@ class Playlist(TidalObject):
         if offset + len(json['items']) >= json['totalNumberOfItems']:
             return items + json['items']
 
+        # @wvffle, get this recursion out of here plz
         return await self._fetch_items(items + json['items'], offset + limit)
 
     async def tracks(self):
+        # TODO: Convert Playlist.tracks to generator and don't load all tracks on the time
         if 'items' not in self.dict:
             self.dict['items'] = await self._fetch_items()
 
         tracks = []
         for item in self.dict['items']:
-
-            # TODO [#5]: Find another types and see what they are
             if item['type'] == 'track':
                 tracks.append(item['item'])
 
@@ -231,6 +231,7 @@ class Album(TidalObject):
         return Cover(self.sess, self.dict['cover'])
 
     async def tracks(self):
+        # TODO: Convert Album.tracks to generator
         if 'items' not in self.dict:
             resp = await self.sess.get(f"/v1/albums/{self.id}/tracks", params={
                 "countryCode": self.sess.country_code

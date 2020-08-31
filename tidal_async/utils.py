@@ -6,7 +6,7 @@ def snake_to_camel(attr):
     return "".join(c if i == 0 else c.capitalize() for i, c in enumerate(attr.split('_')))
 
 
-def id_from_url(url, type='track'):
+def id_from_url(url, urlname):
     parsed_url = urlparse(url)
     name, domain = parsed_url.hostname.rsplit('.', 2)[-2:]
     path = parsed_url.path
@@ -14,12 +14,12 @@ def id_from_url(url, type='track'):
     if name != 'tidal' or domain != 'com':
         raise InvalidURL
 
-    id_prefix = type + '/'
+    id_prefix = f'/{urlname}/'
 
     if id_prefix not in path:
         raise InvalidURL
 
-    return path.split(id_prefix, 1)[1].split('/')[0]
+    return path.split(id_prefix, 1)[1].split('/', 1)[0]
 
 
 async def cli_auth_url_getter(authorization_url):

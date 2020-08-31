@@ -43,7 +43,6 @@ class TidalSession(object):
 
     async def login(self):
         if self._auth_info is not None:
-            # TODO [#6]: refresh session
             raise AlreadyLoggedIn
 
         # https://tools.ietf.org/html/rfc7636#appendix-B
@@ -105,7 +104,7 @@ class TidalSession(object):
         return await self.request("POST", url, **kwargs)
 
     async def logout(self):
-        # TODO
+        # TODO: TidalSession.logout
         # WTF, android app doesn't send any request when clicking "Log out" button
         raise NotImplemented
 
@@ -138,7 +137,9 @@ class TidalSession(object):
     async def album(self, album_id):
         return await Album.from_id(self, album_id)
 
-    # TODO [#7]: Move to the utils
+    # TODO [#7]: Move _find_tidal_urls to the utils
+    # TODO: Find urls and parse to objects from string
+    #   eg. Parse chat message containing links to Tidal and return all corresponding objects
     def _find_tidal_urls(self, str):
         words = str.split(' ')
         urls = []
@@ -147,7 +148,7 @@ class TidalSession(object):
             if word[:8] == 'https://' or word[:7] == 'http://':
                 if 'tidal.com/' in word:
                     for cls in TidalObject.__subclasses__():
-                        if hasattr(cls, 'urlname') and cls.urlname + '/' in word:
+                        if hasattr(cls, 'urlname') and f'/{cls.urlname}/' in word:
                             urls.append(word)
                             break
 
@@ -159,10 +160,10 @@ class TidalSession(object):
 
 class TidalMultiSession(TidalSession):
     # It helps with downloading multiple tracks simultaneously and overriding region lock
-    # TODO [#8]: run request on random session
-    # TODO [#9]: retry failed (404) requests (regionlock) on next session
-    # TODO [#10]: try file download request on all sessions in queue fullness order
-    #  (tidal blocks downloading of files simultaneously)
+    # TODO [#8]: [TidalMultiSession] Run request on random session
+    # TODO [#9]: [TidalMultiSession] Retry failed (404) requests (regionlock) on next session
+    # TODO [#10]: [TidalMultiSession] Try file download request on all sessions in queue fullness order
+    #   Someone told me that Tidal blocks downloading of files simultaneously, but I didn't really noticed that
     def __init__(self, client_id, interactive_auth_url_getter):
         self.sessions = []
         self.client_id = client_id
