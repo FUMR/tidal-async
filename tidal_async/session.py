@@ -43,7 +43,7 @@ class TidalSession(object):
 
     async def login(self):
         if self._auth_info is not None:
-            # TODO: refresh session
+            # TODO [$5f4ca0abb4d1cd00077d4b40]: refresh session
             raise AlreadyLoggedIn
 
         # https://tools.ietf.org/html/rfc7636#appendix-B
@@ -138,7 +138,7 @@ class TidalSession(object):
     async def album(self, album_id):
         return await Album.from_id(self, album_id)
 
-    # TODO: Move to the utils
+    # TODO [$5f4ca0abb4d1cd00077d4b41]: Move to the utils
     def _find_tidal_urls(self, str):
         words = str.split(' ')
         urls = []
@@ -159,9 +159,9 @@ class TidalSession(object):
 
 class TidalMultiSession(TidalSession):
     # It helps with downloading multiple tracks simultaneously and overriding region lock
-    # TODO: run request on random session
-    # TODO: retry failed (404) requests (regionlock) on next session
-    # TODO: try file download request on all sessions in queue fullness order
+    # TODO [$5f4ca0abb4d1cd00077d4b42]: run request on random session
+    # TODO [$5f4ca0abb4d1cd00077d4b43]: retry failed (404) requests (regionlock) on next session
+    # TODO [$5f4ca0abb4d1cd00077d4b44]: try file download request on all sessions in queue fullness order
     #  (tidal blocks downloading of files simultaneously)
     def __init__(self, client_id, interactive_auth_url_getter):
         self.sessions = []
