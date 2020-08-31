@@ -48,15 +48,15 @@ async def cli_auth_url_getter(authorization_url):
 def parse_title(result, artists=None):
     # https://github.com/divadsn/tidal-telegram-bot/blob/master/tidalbot/utils.py#L60
     if artists and len(artists) > 1:
-        title = result.name.strip()  # just in case
+        title = result.title.strip()  # just in case
 
         # add featuring artists if not already
         if "(feat." not in title:
-            title += f' (feat. {" & ".join([x.name for x in artists[1:]])})'
+            title += f' (feat. {" & ".join([x["name"] for x in artists[1:]])})'
 
         return f'{title}{f" [{result.version}]" if result.version and result.version not in result.name else ""}'
     else:
-        return f'{result.name}{f" ({result.version})" if result.version and result.version not in result.name else ""}'
+        return f'{result.title}{f" ({result.version})" if result.version and result.version not in result.name else ""}'
 
 
 try:
