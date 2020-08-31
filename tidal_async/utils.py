@@ -1,24 +1,9 @@
 from tidal_async.exceptions import InvalidURL
-from tidal_async import TidalObject
 from urllib.parse import urlparse
 
 
 def snake_to_camel(attr):
     return "".join(c if i == 0 else c.capitalize() for i, c in enumerate(attr.split('_')))
-
-
-def find_tidal_urls(str):
-    words = str.split(' ')
-    urls = []
-
-    for word in words:
-        if word[:8] == 'https://' or word[:7] == 'http://':
-            if 'tidal.com/' in word:
-                for cls in TidalObject.__subclasses__():
-                    if hasattr(cls, 'urlname') and cls.urlname + '/' in word:
-                        urls.append(word)
-
-    return urls
 
 
 def id_from_url(url, type='track'):

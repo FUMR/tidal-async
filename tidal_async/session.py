@@ -7,7 +7,6 @@ import aiohttp
 
 from tidal_async import Track, Album, TidalObject
 from tidal_async.exceptions import AuthorizationNeeded, AlreadyLoggedIn, AuthorizationError
-from tidal_async.utils import find_tidal_urls
 
 
 class TidalSession(object):
@@ -139,8 +138,23 @@ class TidalSession(object):
     async def album(self, album_id):
         return await Album.from_id(self, album_id)
 
+    # TODO: Move to the utils
+    def _find_tidal_urls(self, str):
+        words = str.split(' ')
+        urls = []
+
+        for word in words:
+            if word[:8] == 'https://' or word[:7] == 'http://':
+                if 'tidal.com/' in word:
+                    for cls in TidalObject.__subclasses__():
+                        if hasattr(cls, 'urlname') and cls.urlname + '/' in word:
+                            urls.append(word)
+                            break
+
+        return urls
+
     async def objects_from_str(self, string):
-        return [TidalObject.from_url(self, url) for url in find_tidal_urls(string)]
+        return [TidalObject.from_url(self, url) for url in self.find_tidal_urls(string)]
 
 
 class TidalMultiSession(TidalSession):

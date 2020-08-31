@@ -4,6 +4,7 @@ import json
 from typing import Callable, Optional, Union
 
 from tidal_async.utils import snake_to_camel, parse_title, id_from_url
+from tidal_async.exceptions import InvalidURL
 
 try:
     from httpseekablefile import AsyncSeekableHTTPFile
@@ -56,94 +57,31 @@ class TidalObject(object):
 
     @classmethod
     async def from_url(cls, tidal_session, url):
-        for child_cls in cls.__subclasses__():
-            try:
-                if hasattr('urlname' in child_cls):
-                    return await child_cls.from_id(tidal_session, id_from_url(url, child_cls.urlname))
+        if cls is TidalObject:
+            for child_cls in cls.__subclasses__():
+                try:
+                    if hasattr(child_cls, 'urlname'):
+                        print(child_cls.urlname, id_from_url(url, child_cls.urlname))
+                        return await child_cls.from_id(tidal_session, id_from_url(url, child_cls.urlname))
 
-            except InvalidURL:
-                pass
+                except InvalidURL:
+                    pass
+
+            # If none objects match url, then the url must be invalid
+            raise InvalidURL
+
+        if hasattr(cls, 'urlname'):
+            return await cls.from_id(tidal_session, id_from_url(url, cls.urlname))
+
+        # Called class has no field urlname so from_url is not implemented
+        raise NotImplemented
+        
 
     def __getattr__(self, attr):
         return self.dict.get(snake_to_camel(attr))
 
     def __contains__(self, item):
         return snake_to_camel(item) in self.dict
-
-
-class Playlist(TidalObject):
-    urlname = 'playlist'
-
-    async def reload_info(self):
-        resp = await self.sess.get(f"/v1/playlists/{self.id}", params={
-            "countryCode": self.sess.country_code
-        })
-
-        # NOTE: I'm updating self.dict and not reassingning it as the return ftom the api does not contain the `id` key
-        self.dict.update(await resp.json())
-
-    @property
-    def cover(self):
-        # NOTE: It may be also self.dict['squareImage'], needs testing
-        return Cover(self.sess, self.dict['image'])
-
-    async def _fetch_items(self, items = [], offset = 0):
-        limit = 50 # Limit taken from the request done by tidal website
-
-        resp = await self.sess.get(f"/v1/playlists/{self.id}/items", params={
-            "countryCode": self.sess.country_code,
-            "offset": offset,
-            "limit": limit,
-
-            # NOTE: Following parameters are from the browser API, dunno if needed
-            "deviceType": "BROWSER",
-            "locale": "en_US"
-        })
-
-        json = await resp.json()
-
-        if offset + len(json['items']) >= json['totalNumberOfItems']:
-            return items + json['items']
-
-        return await self._fetch_items(items + json['items'], offset + limit)
-
-    async def tracks(self):
-        if 'items' not in self.dict:
-            self.dict['items'] = await self._fetch_items()
-
-        tracks = []
-        for item in self.dict['items']:
-
-            # TODO: Find another types and see what they are
-            if item['type'] == 'track':
-                tracks.append(item['item'])
-
-        return [Track(self.sess, track) for track in tracks]
-
-
-class Album(TidalObject):
-    urlname = 'album'
-
-    async def reload_info(self):
-        resp = await self.sess.get(f"/v1/albums/{self.id}", params={
-            "countryCode": self.sess.country_code
-        })
-
-        self.dict = await resp.json()
-
-    @property
-    def cover(self):
-        return Cover(self.sess, self.dict['cover'])
-
-    async def tracks(self):
-        if 'items' not in self.dict:
-            resp = await self.sess.get(f"/v1/albums/{self.id}/tracks", params={
-                "countryCode": self.sess.country_code
-            })
-
-            self.dict.update(await resp.json())
-
-        return [Track(self.sess, track) for track in self.dict['items']]
 
 
 class Track(TidalObject):
@@ -226,3 +164,78 @@ class Track(TidalObject):
             elif filename is None:
                 filename = self.title
             return await AsyncSeekableHTTPFile.create(await self.stream_url(audio_quality), filename, self.sess.sess)
+
+
+class Playlist(TidalObject):
+    urlname = 'playlist'
+
+    async def reload_info(self):
+        resp = await self.sess.get(f"/v1/playlists/{self.id}", params={
+            "countryCode": self.sess.country_code
+        })
+
+        # NOTE: I'm updating self.dict and not reassingning it as the return ftom the api does not contain the `id` key
+        self.dict.update(await resp.json())
+
+    @property
+    def cover(self):
+        # NOTE: It may be also self.dict['squareImage'], needs testing
+        return Cover(self.sess, self.dict['image'])
+
+    async def _fetch_items(self, items = [], offset = 0):
+        limit = 50 # Limit taken from the request done by tidal website
+
+        resp = await self.sess.get(f"/v1/playlists/{self.id}/items", params={
+            "countryCode": self.sess.country_code,
+            "offset": offset,
+            "limit": limit,
+
+            # NOTE: Following parameters are from the browser API, dunno if needed
+            "deviceType": "BROWSER",
+            "locale": "en_US"
+        })
+
+        json = await resp.json()
+
+        if offset + len(json['items']) >= json['totalNumberOfItems']:
+            return items + json['items']
+
+        return await self._fetch_items(items + json['items'], offset + limit)
+
+    async def tracks(self):
+        if 'items' not in self.dict:
+            self.dict['items'] = await self._fetch_items()
+
+        tracks = []
+        for item in self.dict['items']:
+
+            # TODO: Find another types and see what they are
+            if item['type'] == 'track':
+                tracks.append(item['item'])
+
+        return [Track(self.sess, track) for track in tracks]
+
+
+class Album(TidalObject):
+    urlname = 'album'
+
+    async def reload_info(self):
+        resp = await self.sess.get(f"/v1/albums/{self.id}", params={
+            "countryCode": self.sess.country_code
+        })
+
+        self.dict = await resp.json()
+
+    @property
+    def cover(self):
+        return Cover(self.sess, self.dict['cover'])
+
+    async def tracks(self):
+        if 'items' not in self.dict:
+            resp = await self.sess.get(f"/v1/albums/{self.id}/tracks", params={
+                "countryCode": self.sess.country_code
+            })
+
+            self.dict.update(await resp.json())
+
+        return [Track(self.sess, track) for track in self.dict['items']]
