@@ -54,6 +54,16 @@ class TidalObject(object):
         await obj.reload_info()
         return obj
 
+    @classmethod
+    async def from_url(cls, tidal_session, url):
+        for child_cls in cls.__subclasses__():
+            try:
+                if hasattr('urlname' in child_cls):
+                    return await child_cls.from_id(tidal_session, id_from_url(url, child_cls.urlname))
+
+            except InvalidURL:
+                pass
+
     def __getattr__(self, attr):
         return self.dict.get(snake_to_camel(attr))
 
@@ -62,6 +72,8 @@ class TidalObject(object):
 
 
 class Playlist(TidalObject):
+    urlname = 'playlist'
+
     async def reload_info(self):
         resp = await self.sess.get(f"/v1/playlists/{self.id}", params={
             "countryCode": self.sess.country_code
@@ -69,10 +81,6 @@ class Playlist(TidalObject):
 
         # NOTE: I'm updating self.dict and not reassingning it as the return ftom the api does not contain the `id` key
         self.dict.update(await resp.json())
-
-    @classmethod
-    async def from_url(cls, tidal_session, url):
-        return await Playlist.from_id(tidal_session, id_from_url(url, 'playlist'))
 
     @property
     def cover(self):
@@ -114,16 +122,14 @@ class Playlist(TidalObject):
 
 
 class Album(TidalObject):
+    urlname = 'album'
+
     async def reload_info(self):
         resp = await self.sess.get(f"/v1/albums/{self.id}", params={
             "countryCode": self.sess.country_code
         })
 
         self.dict = await resp.json()
-
-    @classmethod
-    async def from_url(cls, tidal_session, url):
-        return await Album.from_id(tidal_session, id_from_url(url, 'album'))
 
     @property
     def cover(self):
@@ -141,16 +147,14 @@ class Album(TidalObject):
 
 
 class Track(TidalObject):
+    urlname = 'track'
+
     # TODO: lyrics
     async def reload_info(self):
         resp = await self.sess.get(f"/v1/tracks/{self.id}", params={
             "countryCode": self.sess.country_code
         })
         self.dict = await resp.json()
-
-    @classmethod
-    async def from_url(cls, tidal_session, url):
-        return await Track.from_id(tidal_session, id_from_url(url))
 
     @property
     def album(self):
