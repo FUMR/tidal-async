@@ -12,7 +12,7 @@ def find_tidal_urls(str):
     for word in words:
         if word[:8] == 'https://' or word[:7] == 'http://':
             if 'tidal.com/' in word:
-                if 'track/' in word or 'album/' in word:
+                if 'track/' in word or 'album/' in word or 'playlist/' in word:
                     urls.append(word)
 
     return urls
