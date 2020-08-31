@@ -76,6 +76,7 @@ class Playlist(TidalObject):
 
     @property
     def cover(self):
+        # NOTE: It may be also self.dict['squareImage'], needs testing
         return Cover(self.sess, self.dict['image'])
 
     async def _fetch_items(self, items = [], offset = 0):
