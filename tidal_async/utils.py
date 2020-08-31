@@ -17,6 +17,7 @@ def find_tidal_urls(str):
 
     return urls
 
+
 def id_from_url(url, type='track'):
     parsed_url = urlparse(url)
     name, domain = parsed_url.hostname.rsplit('.', 2)[-2:]
@@ -31,6 +32,7 @@ def id_from_url(url, type='track'):
         raise InvalidURL
 
     return path.split(id_prefix, 1)[1].split('/')[0]
+
 
 async def cli_auth_url_getter(authorization_url):
     # raise NotImplemented
