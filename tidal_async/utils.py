@@ -1,7 +1,36 @@
+from tidal_async.exceptions import InvalidURL
+from urllib.parse import urlparse
 
 def snake_to_camel(attr):
     return "".join(c if i == 0 else c.capitalize() for i, c in enumerate(attr.split('_')))
 
+
+def find_tidal_urls(str):
+    words = str.split(' ')
+    urls = []
+
+    for word in words:
+        if word[:8] == 'https://' or word[:7] == 'http://':
+            if 'tidal.com/' in word:
+                if 'track/' in word or 'album/' in word:
+                    urls.append(word)
+
+    return urls
+
+def id_from_url(url, type='track'):
+    parsed_url = urlparse(url)
+    name, domain = parsed_url.hostname.rsplit('.', 2)[-2:]
+    path = parsed_url.path
+
+    if name != 'tidal' or domain != 'com':
+        raise InvalidURL
+
+    id_prefix = type + '/'
+
+    if id_prefix not in path:
+        raise InvalidURL
+
+    return path.split(id_prefix, 1)[1].split('/')[0]
 
 async def cli_auth_url_getter(authorization_url):
     # raise NotImplemented
