@@ -37,7 +37,7 @@ class Cover(object):
         return f"https://resources.tidal.com/images/{self.id.replace('-', '/')}/{size[0]}x{size[1]}.jpg"
 
     if 'AsyncSeekableHTTPFile' in globals():
-        async def get_async_file(self, filename: Optional[str] = None, size=(320, 320)):
+        async def get_async_file(self, filename: Optional[str] = None, size=(640, 640)):
             return await AsyncSeekableHTTPFile.create(self.url(size), filename, self.sess.sess)
 
 
@@ -121,6 +121,9 @@ class Track(TidalObject):
         return json.loads(base64.b64decode(data['manifest']))
     
     async def get_stream_url(self, audio_quality=AudioQuality.Master):
+        # TODO: [Track.get_stream_url] Raise exception when audio quality worse than min_audio_quality
+        #   eg. InsufficientAudioQuality
+        # TODO: [Track.get_stream_url] Allow to specify min_audio_quality in per-session basics
         return (await self._stream_manifest(audio_quality))['urls'][0]
 
     async def get_metadata_tags(self):
