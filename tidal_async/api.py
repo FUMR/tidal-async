@@ -86,7 +86,12 @@ class Track(TidalObject, generic.Track):
         return f"<{cls.__module__}.{cls.__qualname__} ({self.id}): {self.artist_name} - {self.title}>"
 
     async def reload_info(self):
-        resp = await self.sess.get(f"/v1/tracks/{self.id}", params={"countryCode": self.sess.country_code})
+        resp = await self.sess.get(
+            f"/v1/tracks/{self.id}",
+            params={
+                "countryCode": self.sess.country_code,
+            },
+        )
         self.dict = await resp.json()
 
     @property
@@ -114,7 +119,11 @@ class Track(TidalObject, generic.Track):
     async def _playbackinfopostpaywall(self, audio_quality=AudioQuality.Master):
         resp = await self.sess.get(
             f"/v1/tracks/{self.id}/playbackinfopostpaywall",
-            params={"playbackmode": "STREAM", "assetpresentation": "FULL", "audioquality": audio_quality.value},
+            params={
+                "playbackmode": "STREAM",
+                "assetpresentation": "FULL",
+                "audioquality": audio_quality.value,
+            },
         )
 
         return await resp.json()
@@ -175,7 +184,12 @@ class Playlist(TidalObject, generic.TrackCollection):
         return f"<{cls.__module__}.{cls.__qualname__} ({self.id}): {self.title}>"
 
     async def reload_info(self):
-        resp = await self.sess.get(f"/v1/playlists/{self.id}", params={"countryCode": self.sess.country_code})
+        resp = await self.sess.get(
+            f"/v1/playlists/{self.id}",
+            params={
+                "countryCode": self.sess.country_code,
+            },
+        )
 
         # NOTE: I'm updating self.dict and not reassingning it as the return ftom the api does not contain the `id` key
         self.dict.update(await resp.json())
@@ -230,7 +244,12 @@ class Album(TidalObject, generic.TrackCollection):
         return f"<{cls.__module__}.{cls.__qualname__} ({self.id}): {self.artist['name']} - {self.title}>"
 
     async def reload_info(self):
-        resp = await self.sess.get(f"/v1/albums/{self.id}", params={"countryCode": self.sess.country_code})
+        resp = await self.sess.get(
+            f"/v1/albums/{self.id}",
+            params={
+                "countryCode": self.sess.country_code,
+            },
+        )
 
         self.dict = await resp.json()
 
@@ -243,7 +262,12 @@ class Album(TidalObject, generic.TrackCollection):
         # TODO [#25]: Find out if it is possible for tracks request on album to show not-all results
         #   If it can - run multiple requests
         if "items" not in self:
-            resp = await self.sess.get(f"/v1/albums/{self.id}/tracks", params={"countryCode": self.sess.country_code})
+            resp = await self.sess.get(
+                f"/v1/albums/{self.id}/tracks",
+                params={
+                    "countryCode": self.sess.country_code,
+                },
+            )
 
             self.dict.update(await resp.json())
 

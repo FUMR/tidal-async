@@ -91,7 +91,10 @@ class TidalSession(generic.Session):
         headers_ = {} if headers is None else headers
         if auth:
             headers_.update(
-                {"X-Tidal-Token": self.client_id, "Authorization": f"{self._token_type} {self._access_token}"}
+                {
+                    "X-Tidal-Token": self.client_id,
+                    "Authorization": f"{self._token_type} {self._access_token}",
+                }
             )
 
         resp = await self.sess.request(method, url, headers=headers_, **kwargs)
