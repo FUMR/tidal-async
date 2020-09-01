@@ -7,8 +7,8 @@ from typing import Optional
 import aiohttp
 import music_service_async_interface as generic
 
-from tidal_async import Track, Album, Playlist
-from tidal_async.exceptions import AuthorizationNeeded, AuthorizationError
+from tidal_async import Album, Playlist, Track
+from tidal_async.exceptions import AuthorizationError, AuthorizationNeeded
 
 
 class TidalSession(generic.Session):
@@ -29,19 +29,19 @@ class TidalSession(generic.Session):
     def _access_token(self):
         if self._auth_info is None:
             raise AuthorizationNeeded
-        return self._auth_info['access_token']
+        return self._auth_info["access_token"]
 
     @property
     def _token_type(self):
         if self._auth_info is None:
             raise AuthorizationNeeded
-        return self._auth_info['token_type']
+        return self._auth_info["token_type"]
 
     @property
     def country_code(self):
         if self._auth_info is None:
             raise AuthorizationNeeded
-        return self._auth_info['user']['countryCode']
+        return self._auth_info["user"]["countryCode"]
 
     async def login(self, force_relogin=False):
         if self._auth_info is not None and not force_relogin:
@@ -51,47 +51,51 @@ class TidalSession(generic.Session):
         code_verifier = base64.urlsafe_b64encode(os.urandom(32))[:-1]
         code_challenge = base64.urlsafe_b64encode(hashlib.sha256(code_verifier).digest())[:-1]
 
-        qs = urllib.parse.urlencode({
-            "response_type": "code",
-            "redirect_uri": self._redirect_uri,
-            "client_id": self.client_id,
-            "appMode": "android",
-            "code_challenge": code_challenge.decode('ascii'),
-            "code_challenge_method": "S256",
-            "restrict_signup": "true"
-        })
+        qs = urllib.parse.urlencode(
+            {
+                "response_type": "code",
+                "redirect_uri": self._redirect_uri,
+                "client_id": self.client_id,
+                "appMode": "android",
+                "code_challenge": code_challenge.decode("ascii"),
+                "code_challenge_method": "S256",
+                "restrict_signup": "true",
+            }
+        )
 
         authorization_url = urllib.parse.urljoin(self._oauth_authorize_url, "?" + qs)
 
         auth_url = await self._interactive_auth_getter(authorization_url)
 
-        code = urllib.parse.parse_qs(urllib.parse.urlsplit(auth_url).query)['code'][0]
+        code = urllib.parse.parse_qs(urllib.parse.urlsplit(auth_url).query)["code"][0]
 
-        async with self.sess.post(self._oauth_token_url, data={
-            "code": code,
-            "client_id": self.client_id,
-            "grant_type": "authorization_code",
-            "redirect_uri": self._redirect_uri,
-            "scope": "r_usr w_usr w_sub",
-            "code_verifier": code_verifier.decode('ascii'),
-        }) as resp:
+        async with self.sess.post(
+            self._oauth_token_url,
+            data={
+                "code": code,
+                "client_id": self.client_id,
+                "grant_type": "authorization_code",
+                "redirect_uri": self._redirect_uri,
+                "scope": "r_usr w_usr w_sub",
+                "code_verifier": code_verifier.decode("ascii"),
+            },
+        ) as resp:
             data = await resp.json()
             if resp.status != 200:
-                raise AuthorizationError(data['error'], data['error_description'])
+                raise AuthorizationError(data["error"], data["error_description"])
             self._auth_info = data
-            self._refresh_token = data['refresh_token']
+            self._refresh_token = data["refresh_token"]
 
     async def request(self, method, url, auth=True, headers=None, autorefresh=True, **kwargs):
         url = urllib.parse.urljoin(self._api_base_url, url)
         headers_ = {} if headers is None else headers
         if auth:
-            headers_.update({
-                "X-Tidal-Token": self.client_id,
-                "Authorization": f"{self._token_type} {self._access_token}"
-            })
+            headers_.update(
+                {"X-Tidal-Token": self.client_id, "Authorization": f"{self._token_type} {self._access_token}"}
+            )
 
         resp = await self.sess.request(method, url, headers=headers_, **kwargs)
-        if autorefresh and resp.status == 401 and (await resp.json())['subStatus'] == 11003:
+        if autorefresh and resp.status == 401 and (await resp.json())["subStatus"] == 11003:
             await self.refresh_session()
             return await self.request(method, url, auth, headers, False, **kwargs)
         else:
@@ -108,20 +112,23 @@ class TidalSession(generic.Session):
     async def logout(self):
         # TODO [#14]: TidalSession.logout
         # WTF, android app doesn't send any request when clicking "Log out" button
-        raise NotImplemented
+        raise NotImplementedError
 
     async def refresh_session(self):
         if self._refresh_token is None:
             raise AuthorizationNeeded
-        async with self.sess.post(self._oauth_token_url, data={
-            "client_id": self.client_id,
-            "grant_type": "refresh_token",
-            "scope": "r_usr w_usr w_sub",
-            "refresh_token": self._refresh_token,
-        }) as resp:
+        async with self.sess.post(
+            self._oauth_token_url,
+            data={
+                "client_id": self.client_id,
+                "grant_type": "refresh_token",
+                "scope": "r_usr w_usr w_sub",
+                "refresh_token": self._refresh_token,
+            },
+        ) as resp:
             data = await resp.json()
             if resp.status != 200:
-                raise AuthorizationError(data['error'], data['error_description'])
+                raise AuthorizationError(data["error"], data["error_description"])
             self._auth_info = data
 
     async def close(self):
@@ -177,7 +184,7 @@ class TidalMultiSession(TidalSession):
         self.sessions.append(sess)
 
     async def login(self):
-        raise NotImplemented
+        raise NotImplementedError
 
     async def logout(self, sess_num=None):
         if sess_num is None:

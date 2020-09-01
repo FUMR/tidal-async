@@ -2,7 +2,7 @@ import asyncio
 import sys
 from zipfile import ZipFile
 
-from tidal_async import TidalSession, extract_client_id, cli_auth_url_getter
+from tidal_async import TidalSession, cli_auth_url_getter, extract_client_id
 from zip import DebugFile
 
 
@@ -22,9 +22,9 @@ async def main(apk_file):
         #     print("\n")
 
         album = await sess.album(22563744)
-        tracks = list(await album.tracks())
-        playlist = await sess.playlist("dcbab999-7523-4e2f-adf4-57d10fc17516")
-        fname = lambda t: f"{t.track_number:02d}. {t.title}.flac".replace('/', '|').replace('\\', '|')
+        # tracks = list(await album.tracks())
+        # playlist = await sess.playlist("dcbab999-7523-4e2f-adf4-57d10fc17516")
+        fname = lambda t: f"{t.track_number:02d}. {t.title}.flac".replace("/", "|").replace("\\", "|")
         files = (await t.get_async_file(filename=fname) for t in await album.tracks())
         coversizes = len(await album.cover.get_async_file()) * len(await album.tracks())
 
@@ -48,22 +48,22 @@ async def main(apk_file):
 
         filesizes = 0
 
-        chunk_size = 128*1024  # 128kB
-        with open('tmp/wtf.zip', 'wb') as outf:
+        chunk_size = 128 * 1024  # 128kB
+        with open("tmp/wtf.zip", "wb") as outf:
             nf = DebugFile(proxied_file=outf)
             nf.toggle_print_write()
-            with ZipFile(nf, 'w', allowZip64=False) as zipf:
+            with ZipFile(nf, "w", allowZip64=False) as zipf:
                 async for f in files:
                     filesizes += len(f)
                     zip_data += 30 + 16 + 46 + 2 * len(f.name)
-                    with zipf.open(f.name, mode='w') as fz:
+                    with zipf.open(f.name, mode="w") as fz:
                         print(f.name)
                         nf.toggle_print_write()
                         async with f:
                             while data := await f.read(chunk_size):
                                 fz.write(data)
                         nf.toggle_print_write()
-                zipf.comment = b'\0'*65535
+                zipf.comment = b"\0" * 65535
 
         print(f"calculated zip data: {zip_data}")
         print(f"audio files: {filesizes} B")
@@ -79,5 +79,5 @@ async def main(apk_file):
         # pprint([(t.title, t.audio_quality) for t in tracks])
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     asyncio.get_event_loop().run_until_complete(main(sys.argv[1]))
