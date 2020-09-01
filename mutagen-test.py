@@ -1,26 +1,26 @@
 import mutagen
 from mutagen import id3
-from mutagen.flac import Picture, FLAC
+from mutagen.flac import FLAC, Picture
 from mutagen.id3 import APIC
 
 import tidal_async
 from zip import DebugFile
 
-with open('tmp/test.flac', 'rb') as in_f, open('tmp/outf.flac', 'wb') as out_f:
-    while data := in_f.read(128*1024):
+with open("tmp/test.flac", "rb") as in_f, open("tmp/outf.flac", "wb") as out_f:
+    while data := in_f.read(128 * 1024):
         out_f.write(data)
 
-with open('tmp/outf.flac', 'rb+') as f:
+with open("tmp/outf.flac", "rb+") as f:
     # name="DebugFile", proxied_file=None, print_write=False, print_read=False, seekable=False
     df = DebugFile(proxied_file=f, seekable=True, print_read=True, print_write=True)
 
     print("creating flac file")
     track = FLAC(df)
 
-    print('<tag>')
-    track['artist'] = "Twoja matka"
-    track['title'] = "Sextapekurwa"
-    print('</tags>')
+    print("<tag>")
+    track["artist"] = "Twoja matka"
+    track["title"] = "Sextapekurwa"
+    print("</tags>")
 
     # cover_size = (640, 640)
 
