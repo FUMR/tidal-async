@@ -2,14 +2,16 @@ import base64
 import hashlib
 import os
 import urllib.parse
+from typing import Optional
 
 import aiohttp
+import music_service_async_interface as generic
 
-from tidal_async import Track, Album, TidalObject
-from tidal_async.exceptions import AuthorizationNeeded, AlreadyLoggedIn, AuthorizationError
+from tidal_async import Track, Album, Playlist
+from tidal_async.exceptions import AuthorizationNeeded, AuthorizationError
 
 
-class TidalSession(object):
+class TidalSession(generic.Session):
     _redirect_uri = "https://tidal.com/android/login/auth"  # or tidal://login/auth
     _api_base_url = "https://api.tidal.com/"
     _oauth_authorize_url = "https://login.tidal.com/authorize"
@@ -41,10 +43,9 @@ class TidalSession(object):
             raise AuthorizationNeeded
         return self._auth_info['user']['countryCode']
 
-    async def login(self):
-        if self._auth_info is not None:
-            # TODO: refresh session
-            raise AlreadyLoggedIn
+    async def login(self, force_relogin=False):
+        if self._auth_info is not None and not force_relogin:
+            return
 
         # https://tools.ietf.org/html/rfc7636#appendix-B
         code_verifier = base64.urlsafe_b64encode(os.urandom(32))[:-1]
@@ -105,7 +106,7 @@ class TidalSession(object):
         return await self.request("POST", url, **kwargs)
 
     async def logout(self):
-        # TODO
+        # TODO [#14]: TidalSession.logout
         # WTF, android app doesn't send any request when clicking "Log out" button
         raise NotImplemented
 
@@ -138,39 +139,41 @@ class TidalSession(object):
     async def album(self, album_id):
         return await Album.from_id(self, album_id)
 
-    # TODO: Move to the utils
-    def _find_tidal_urls(self, str):
-        words = str.split(' ')
-        urls = []
+    async def playlist(self, playlist_uuid):
+        return await Playlist.from_id(self, playlist_uuid)
 
-        for word in words:
-            if word[:8] == 'https://' or word[:7] == 'http://':
-                if 'tidal.com/' in word:
-                    for cls in TidalObject.__subclasses__():
-                        if hasattr(cls, 'urlname') and cls.urlname + '/' in word:
-                            urls.append(word)
-                            break
+    @staticmethod
+    def is_valid_url(url: str) -> bool:
+        url_ = urllib.parse.urlsplit(url)
+        if not url_.scheme:
+            # correctly parse urls without scheme
+            url_ = urllib.parse.urlsplit("//" + url)
 
-        return urls
+        if url_.netloc == "tidal.com" or url_.netloc.endswith(".tidal.com"):
+            return True
 
-    async def objects_from_str(self, string):
-        return [TidalObject.from_url(self, url) for url in self.find_tidal_urls(string)]
+        return False
 
 
 class TidalMultiSession(TidalSession):
     # It helps with downloading multiple tracks simultaneously and overriding region lock
-    # TODO: run request on random session
-    # TODO: retry failed (404) requests (regionlock) on next session
-    # TODO: try file download request on all sessions in queue fullness order
-    #  (tidal blocks downloading of files simultaneously)
+    # TODO [#8]: [TidalMultiSession] Run request on random session
+    # TODO [#9]: [TidalMultiSession] Retry failed (404) requests (regionlock) on next session
+    # TODO [#10]: [TidalMultiSession] Try file download request on all sessions in queue fullness order
+    #   Someone told me that Tidal blocks downloading of files simultaneously, but I didn't really noticed that
     def __init__(self, client_id, interactive_auth_url_getter):
         self.sessions = []
         self.client_id = client_id
         self._interactive_auth_getter = interactive_auth_url_getter
 
-    async def add_session(self):
-        sess = TidalSession(self.client_id, self._interactive_auth_getter)
-        await sess.login()
+    async def add_session(self, sess: Optional[TidalSession] = None):
+        if sess is None:
+            sess = TidalSession(self.client_id, self._interactive_auth_getter)
+            await sess.login()
+
+        if self._auth_info is None:
+            raise AuthorizationNeeded("tried to add unauthenticated Tidal session to multi-session object")
+
         self.sessions.append(sess)
 
     async def login(self):

@@ -1,4 +1,4 @@
-from tidal_async.exceptions import InvalidURL
+from music_service_async_interface import InvalidURL
 from urllib.parse import urlparse
 
 
@@ -6,7 +6,7 @@ def snake_to_camel(attr):
     return "".join(c if i == 0 else c.capitalize() for i, c in enumerate(attr.split('_')))
 
 
-def id_from_url(url, type='track'):
+def id_from_url(url, urlname):
     parsed_url = urlparse(url)
     name, domain = parsed_url.hostname.rsplit('.', 2)[-2:]
     path = parsed_url.path
@@ -14,12 +14,12 @@ def id_from_url(url, type='track'):
     if name != 'tidal' or domain != 'com':
         raise InvalidURL
 
-    id_prefix = type + '/'
+    id_prefix = f'/{urlname}/'
 
     if id_prefix not in path:
         raise InvalidURL
 
-    return path.split(id_prefix, 1)[1].split('/')[0]
+    return path.split(id_prefix, 1)[1].split('/', 1)[0]
 
 
 async def cli_auth_url_getter(authorization_url):
@@ -35,6 +35,7 @@ async def cli_auth_url_getter(authorization_url):
 
 def parse_title(result, artists=None):
     # https://github.com/divadsn/tidal-telegram-bot/blob/master/tidalbot/utils.py#L60
+    # TODO [#26]: Read parse_title carefully and rewrite
     if artists and len(artists) > 1:
         title = result.title.strip()  # just in case
 
