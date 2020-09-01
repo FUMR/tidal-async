@@ -50,7 +50,7 @@ class TidalObject(generic.Object, ABC):
 
     @classmethod
     async def from_id(cls, sess: 'TidalSession', id_):
-        # TODO [$5f4dbbded370b70007650162]: Make sure from_id cannot be called on TidalObject
+        # TODO [#20]: Make sure from_id cannot be called on TidalObject
         #   Same goes for from_url
         #   I was pretty sure I can just mark it @abstractmethod and don't override it, but it looks like I was wrong
         obj = cls(sess, {'id': id_})
@@ -108,7 +108,7 @@ class Track(TidalObject, generic.Track):
     def cover(self):
         return self.album.cover
 
-    # TODO [$5f4dbbded370b70007650163]: Track.artist
+    # TODO [#21]: Track.artist
 
     @property
     def audio_quality(self):
@@ -133,7 +133,7 @@ class Track(TidalObject, generic.Track):
         return (await self._stream_manifest(audio_quality))['urls'][0]
 
     async def get_metadata(self):
-        # TODO [$5f4dbbded370b70007650164]: fix Track.get_metadata
+        # TODO [#22]: fix Track.get_metadata
         album = self.album
         await album.reload_info()
 
@@ -170,7 +170,7 @@ class Track(TidalObject, generic.Track):
 
 
 class Playlist(TidalObject, generic.TrackCollection):
-    # TODO [$5f4dbbded370b70007650165]: Reimplement Playlist.from_id and Playlist.__init__
+    # TODO [#23]: Reimplement Playlist.from_id and Playlist.__init__
     #   Playlist field for `id` is named `uuid`, not `id` as in other objects
     #   Should also fix @wvffle 's workaround with self.dict.update
     urlname = 'playlist'
@@ -227,7 +227,7 @@ class Playlist(TidalObject, generic.TrackCollection):
 class Album(TidalObject, generic.TrackCollection):
     urlname = 'album'
 
-    # TODO [$5f4dbbded370b70007650166]: Album.artist
+    # TODO [#24]: Album.artist
 
     def __repr__(self):
         cls = self.__class__
@@ -246,7 +246,7 @@ class Album(TidalObject, generic.TrackCollection):
 
     async def tracks(self) -> AsyncGenerator[Track, None]:
         # TODO [#13]: Convert Album.tracks to generator
-        # TODO [$5f4dbbded370b70007650167]: Find out if it is possible for tracks request on album to show not-all results
+        # TODO [#25]: Find out if it is possible for tracks request on album to show not-all results
         #   If it can - run multiple requests
         if 'items' not in self:
             resp = await self.sess.get(f"/v1/albums/{self.id}/tracks", params={

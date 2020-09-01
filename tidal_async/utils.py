@@ -35,7 +35,7 @@ async def cli_auth_url_getter(authorization_url):
 
 def parse_title(result, artists=None):
     # https://github.com/divadsn/tidal-telegram-bot/blob/master/tidalbot/utils.py#L60
-    # TODO [$5f4dbbded370b70007650168]: Read parse_title carefully and rewrite
+    # TODO [#26]: Read parse_title carefully and rewrite
     if artists and len(artists) > 1:
         title = result.title.strip()  # just in case
 
