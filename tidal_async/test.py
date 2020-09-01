@@ -1,5 +1,6 @@
 import asyncio
 import sys
+from pprint import pprint
 from zipfile import ZipFile
 
 from tidal_async import TidalSession, extract_client_id, cli_auth_url_getter
@@ -21,12 +22,31 @@ async def main(apk_file):
         #     pprint(await sess.track_url(track, region))
         #     print("\n")
 
+        # test loading albums, playlists and tracks from them
+        print("Album")
         album = await sess.album(22563744)
-        tracks = list(await album.tracks())
+        pprint(album)
+
+        print("\nAlbum tracks")
+        album_tracks = [track async for track in album.tracks(per_request_limit=10)]
+        pprint(album_tracks)
+
+        print("\nPlaylist")
         playlist = await sess.playlist("dcbab999-7523-4e2f-adf4-57d10fc17516")
-        fname = lambda t: f"{t.track_number:02d}. {t.title}.flac".replace('/', '|').replace('\\', '|')
-        files = (await t.get_async_file(filename=fname) for t in await album.tracks())
-        coversizes = len(await album.cover.get_async_file()) * len(await album.tracks())
+        pprint(playlist)
+
+        print("\nPlaylist tracks")
+        playlist_tracks = [track async for track in playlist.tracks()]
+        pprint(playlist_tracks)
+
+        print()
+
+        # test zip creation and try to guess size
+        def fname(t):
+            return f"{t.track_number:02d}. {t.title}.flac".replace('/', '|').replace('\\', '|')
+
+        files = (await t.get_async_file(filename=fname(t)) async for t in album.tracks())
+        cover_file_size = len(await album.cover.get_async_file()) * len([t async for t in album.tracks()])
 
         # zip file overhead
         # per file
@@ -48,6 +68,8 @@ async def main(apk_file):
 
         filesizes = 0
 
+        zip_padding_size = 65535
+
         chunk_size = 128*1024  # 128kB
         with open('tmp/wtf.zip', 'wb') as outf:
             nf = DebugFile(proxied_file=outf)
@@ -63,11 +85,13 @@ async def main(apk_file):
                             while data := await f.read(chunk_size):
                                 fz.write(data)
                         nf.toggle_print_write()
-                zipf.comment = b'\0'*65535
+                zipf.comment = b'\0' * zip_padding_size
 
-        print(f"calculated zip data: {zip_data}")
+        print(f"calculated additional zip data: {zip_data} B")
         print(f"audio files: {filesizes} B")
-        print(f"cover files: {coversizes} B")
+        print(f"cover files: {cover_file_size} B")
+
+        print(f"calculated correct zip size: {(zip_data + filesizes + zip_padding_size) == nf.written}")
 
         # pprint(album.dict)
         # print()

@@ -109,6 +109,7 @@ class Track(TidalObject, generic.Track):
         return self.album.cover
 
     # TODO [#21]: Track.artist
+    #   Needs #1 to be resolved
 
     @property
     def audio_quality(self):
@@ -134,6 +135,7 @@ class Track(TidalObject, generic.Track):
 
     async def get_metadata(self):
         # TODO [#22]: fix Track.get_metadata
+        #   and add lyrics if possible
         album = self.album
         await album.reload_info()
 
@@ -184,7 +186,7 @@ class Playlist(TidalObject, generic.TrackCollection):
             "countryCode": self.sess.country_code
         })
 
-        # NOTE: I'm updating self.dict and not reassingning it as the return ftom the api does not contain the `id` key
+        # NOTE: I'm updating self.dict and not reassigning it as the return from the api does not contain the `id` key
         self.dict.update(await resp.json())
 
     @property
@@ -192,42 +194,31 @@ class Playlist(TidalObject, generic.TrackCollection):
         # NOTE: It may be also self['squareImage'], needs testing
         return Cover(self.sess, self['image'])
 
-    async def _fetch_items(self, items=None, offset=0):
-        # TODO [#11]: Make Playlist._fetch_items call just one request
-        #   Playlist.tracks should call _fetch_items multiple times in LOOP (don't do recursion like that PLZ @wvffle)
-        limit = 50  # Limit taken from the request done by tidal website
+    async def tracks(self, per_request_limit=50) -> AsyncGenerator[Track, None]:
+        offset = 0
+        total_items = 1
 
-        resp = await self.sess.get(f"/v1/playlists/{self.id}/items", params={
-            "countryCode": self.sess.country_code,
-            "offset": offset,
-            "limit": limit,
-        })
+        while offset < total_items:
+            resp = await self.sess.get(f"/v1/playlists/{self.id}/tracks", params={
+                "countryCode": self.sess.country_code,
+                "offset": offset,
+                "limit": per_request_limit,
+            })
+            data = await resp.json()
 
-        json_ = await resp.json()
+            total_items = data['totalNumberOfItems']
+            offset = data['offset'] + data['limit']
 
-        if offset + len(json_['items']) >= json_['totalNumberOfItems']:
-            return items + json_['items']
-
-        # @wvffle, get this recursion out of here plz
-        return await self._fetch_items(items + json_['items'], offset + limit)
-
-    async def tracks(self) -> AsyncGenerator[Track, None]:
-        # TODO [#12]: Convert Playlist.tracks to generator and don't load all tracks on the time
-        if 'items' not in self:
-            self['items'] = await self._fetch_items()
-
-        tracks = []
-        for item in self['items']:
-            if item['type'] == 'track':
-                tracks.append(item['item'])
-
-        return [Track(self.sess, track) for track in tracks]
+            for track in data['items']:
+                # python doesn't support `yield from` in async functions.. why?
+                yield Track(self.sess, track)
 
 
 class Album(TidalObject, generic.TrackCollection):
     urlname = 'album'
 
     # TODO [#24]: Album.artist
+    #   Needs #1 to be resolved
 
     def __repr__(self):
         cls = self.__class__
@@ -244,15 +235,21 @@ class Album(TidalObject, generic.TrackCollection):
     def cover(self):
         return Cover(self.sess, self['cover'])
 
-    async def tracks(self) -> AsyncGenerator[Track, None]:
-        # TODO [#13]: Convert Album.tracks to generator
-        # TODO [#25]: Find out if it is possible for tracks request on album to show not-all results
-        #   If it can - run multiple requests
-        if 'items' not in self:
+    async def tracks(self, per_request_limit=50) -> AsyncGenerator[Track, None]:
+        offset = 0
+        total_items = 1
+
+        while offset < total_items:
             resp = await self.sess.get(f"/v1/albums/{self.id}/tracks", params={
-                "countryCode": self.sess.country_code
+                "countryCode": self.sess.country_code,
+                "offset": offset,
+                "limit": per_request_limit,
             })
+            data = await resp.json()
 
-            self.dict.update(await resp.json())
+            total_items = data['totalNumberOfItems']
+            offset = data['offset'] + data['limit']
 
-        return [Track(self.sess, track) for track in self['items']]
+            for track in data['items']:
+                # python doesn't support `yield from` in async functions.. why?
+                yield Track(self.sess, track)
