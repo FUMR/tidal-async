@@ -1,8 +1,3 @@
-
-class AlreadyLoggedIn(Exception):
-    pass
-
-
 class AuthorizationNeeded(Exception):
     pass
 
@@ -14,6 +9,3 @@ class AuthorizationError(Exception):
 class UnknownSession(Exception):
     pass
 
-
-class InvalidURL(Exception):
-    pass

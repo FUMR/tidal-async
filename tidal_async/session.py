@@ -4,12 +4,13 @@ import os
 import urllib.parse
 
 import aiohttp
+import music_service_async_interface as generic
 
-from tidal_async import Track, Album, TidalObject
-from tidal_async.exceptions import AuthorizationNeeded, AlreadyLoggedIn, AuthorizationError
+from tidal_async import Track, Album, Playlist
+from tidal_async.exceptions import AuthorizationNeeded, AuthorizationError
 
 
-class TidalSession(object):
+class TidalSession(generic.Session):
     _redirect_uri = "https://tidal.com/android/login/auth"  # or tidal://login/auth
     _api_base_url = "https://api.tidal.com/"
     _oauth_authorize_url = "https://login.tidal.com/authorize"
@@ -41,9 +42,9 @@ class TidalSession(object):
             raise AuthorizationNeeded
         return self._auth_info['user']['countryCode']
 
-    async def login(self):
-        if self._auth_info is not None:
-            raise AlreadyLoggedIn
+    async def login(self, force_relogin=False):
+        if self._auth_info is not None and not force_relogin:
+            return
 
         # https://tools.ietf.org/html/rfc7636#appendix-B
         code_verifier = base64.urlsafe_b64encode(os.urandom(32))[:-1]
@@ -137,25 +138,20 @@ class TidalSession(object):
     async def album(self, album_id):
         return await Album.from_id(self, album_id)
 
-    # TODO [#7]: Move _find_tidal_urls to the utils
-    # TODO [#15]: Find urls and parse to objects from string
-    #   eg. Parse chat message containing links to Tidal and return all corresponding objects
-    def _find_tidal_urls(self, str):
-        words = str.split(' ')
-        urls = []
+    async def playlist(self, playlist_uuid):
+        return await Playlist.from_id(self, playlist_uuid)
 
-        for word in words:
-            if word[:8] == 'https://' or word[:7] == 'http://':
-                if 'tidal.com/' in word:
-                    for cls in TidalObject.__subclasses__():
-                        if hasattr(cls, 'urlname') and f'/{cls.urlname}/' in word:
-                            urls.append(word)
-                            break
+    @staticmethod
+    def is_valid_url(url: str) -> bool:
+        url_ = urllib.parse.urlsplit(url)
+        if not url_.scheme:
+            # correctly parse urls without scheme
+            url_ = urllib.parse.urlsplit("//" + url)
 
-        return urls
+        if url_.netloc == "tidal.com" or url_.netloc.endswith(".tidal.com"):
+            return True
 
-    async def objects_from_str(self, string):
-        return [TidalObject.from_url(self, url) for url in self.find_tidal_urls(string)]
+        return False
 
 
 class TidalMultiSession(TidalSession):

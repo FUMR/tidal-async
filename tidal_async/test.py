@@ -22,6 +22,8 @@ async def main(apk_file):
         #     print("\n")
 
         album = await sess.album(22563744)
+        tracks = list(await album.tracks())
+        playlist = await sess.playlist("dcbab999-7523-4e2f-adf4-57d10fc17516")
         fname = lambda t: f"{t.track_number:02d}. {t.title}.flac".replace('/', '|').replace('\\', '|')
         files = (await t.get_async_file(filename=fname) for t in await album.tracks())
         coversizes = len(await album.cover.get_async_file()) * len(await album.tracks())

@@ -1,18 +1,20 @@
 import base64
 import enum
 import json
-from typing import Callable, Optional, Union
+from abc import ABC, abstractmethod
+from typing import TYPE_CHECKING, AsyncGenerator
+
+import music_service_async_interface as generic
 
 from tidal_async.utils import snake_to_camel, parse_title, id_from_url
-from tidal_async.exceptions import InvalidURL
 
-try:
-    from httpseekablefile import AsyncSeekableHTTPFile
-except ImportError:
-    pass
+
+if TYPE_CHECKING:
+    from tidal_async import TidalSession
 
 
 # TODO [#1]: Artist object
+#   needs https://github.com/FUMR/music-service-async-interface/issues/5 to be resolved first
 
 
 class AudioQuality(enum.Enum):
@@ -27,68 +29,62 @@ class AudioMode(enum.Enum):
     Stereo = "STEREO"
 
 
-class Cover(object):
-    def __init__(self, tidal_session, id_):
-        self.sess = tidal_session
+class Cover(generic.Cover):
+    def __init__(self, sess: 'TidalSession', id_):
+        self.sess = sess
         self.id = id_
 
-    def url(self, size=(640, 640)):
+    def get_url(self, size=(640, 640)):
         # Valid resolutions: 80x80, 160x160, 320x320, 640x640, 1280x1280
         return f"https://resources.tidal.com/images/{self.id.replace('-', '/')}/{size[0]}x{size[1]}.jpg"
 
-    if 'AsyncSeekableHTTPFile' in globals():
-        async def get_async_file(self, filename: Optional[str] = None, size=(640, 640)):
-            return await AsyncSeekableHTTPFile.create(self.url(size), filename, self.sess.sess)
 
-
-class TidalObject(object):
-    def __init__(self, tidal_session, dict_):
-        self.sess = tidal_session
+class TidalObject(generic.Object, ABC):
+    def __init__(self, sess: 'TidalSession', dict_):
+        self.sess: 'TidalSession' = sess
         self.dict = dict_
 
+    @abstractmethod
     async def reload_info(self):
-        raise NotImplemented
+        ...
 
     @classmethod
-    async def from_id(cls, tidal_session, id_):
-        obj = cls(tidal_session, {'id': id_})
+    async def from_id(cls, sess: 'TidalSession', id_):
+        # TODO: Make sure from_id cannot be called on TidalObject
+        #   Same goes for from_url
+        #   I was pretty sure I can just mark it @abstractmethod and don't override it, but it looks like I was wrong
+        obj = cls(sess, {'id': id_})
         await obj.reload_info()
         return obj
 
     @classmethod
-    async def _from_url(cls, tidal_session, url):
-        for child_cls in cls.__subclasses__():
-            try:
-                if hasattr(child_cls, 'urlname'):
-                    print(child_cls.urlname, id_from_url(url, child_cls.urlname))
-                    return await child_cls.from_id(tidal_session, id_from_url(url, child_cls.urlname))
-            except InvalidURL:
-                pass
-
-        # If none objects match url, then the url must be invalid
-        raise InvalidURL
-
-    @classmethod
-    async def from_url(cls, tidal_session, url):
-        if cls is TidalObject:
-            return await cls._from_url(tidal_session, url)
-
+    async def from_url(cls, sess: 'TidalSession', url):
         if hasattr(cls, 'urlname'):
-            return await cls.from_id(tidal_session, id_from_url(url, cls.urlname))
+            return await cls.from_id(sess, id_from_url(url, cls.urlname))
 
         # Called class has no field urlname so from_url is not implemented
         raise NotImplemented
 
-    def __getattr__(self, attr):
-        return self.dict.get(snake_to_camel(attr))
+    async def get_url(self) -> str:
+        return self.url
+
+    def __getitem__(self, item):
+        return self.dict[snake_to_camel(item)]
 
     def __contains__(self, item):
         return snake_to_camel(item) in self.dict
 
+    def __getattr__(self, attr):
+        return self[attr]
+
 
 # TODO [#3]: Downloading lyrics
-class Track(TidalObject):
+class Track(TidalObject, generic.Track):
     urlname = 'track'
+
+    def __repr__(self):
+        cls = self.__class__
+        return f"<{cls.__module__}.{cls.__qualname__} ({self.id}): {self.artist_name} - {self.title}>"
 
     async def reload_info(self):
         resp = await self.sess.get(f"/v1/tracks/{self.id}", params={
@@ -97,16 +93,26 @@ class Track(TidalObject):
         self.dict = await resp.json()
 
     @property
+    def title(self) -> str:
+        return self['title']
+
+    @property
+    def artist_name(self) -> str:
+        return self.artist['name']
+
+    @property
     def album(self):
-        return Album(self.sess, self.dict['album'])
+        return Album(self.sess, self['album'])
 
     @property
     def cover(self):
         return self.album.cover
 
+    # TODO: Track.artist
+
     @property
     def audio_quality(self):
-        return AudioQuality(self.dict['audioQuality'])
+        return AudioQuality(self['audioQuality'])
 
     async def _playbackinfopostpaywall(self, audio_quality=AudioQuality.Master):
         resp = await self.sess.get(f"/v1/tracks/{self.id}/playbackinfopostpaywall", params={
@@ -120,19 +126,20 @@ class Track(TidalObject):
         data = await self._playbackinfopostpaywall(audio_quality)
         return json.loads(base64.b64decode(data['manifest']))
     
-    async def get_stream_url(self, audio_quality=AudioQuality.Master):
-        # TODO [#16]: [Track.get_stream_url] Raise exception when audio quality worse than min_audio_quality
+    async def get_file_url(self, audio_quality=AudioQuality.Master) -> str:
+        # TODO [#16]: [Track.get_stream_url] Raise exception when audio quality is worse than min_audio_quality
         #   eg. InsufficientAudioQuality
         # TODO [#17]: [Track.get_stream_url] Allow to specify min_audio_quality in per-session basics
         return (await self._stream_manifest(audio_quality))['urls'][0]
 
-    async def get_metadata_tags(self):
+    async def get_metadata(self):
+        # TODO: fix Track.get_metadata
         album = self.album
         await album.reload_info()
 
         tags = {
             # general metatags
-            'artist': self.artist['name'],
+            'artist': self.artist_name,
             'title': parse_title(self, self.artists),
 
             # album related metatags
@@ -161,18 +168,16 @@ class Track(TidalObject):
 
         return tags
 
-    if 'AsyncSeekableHTTPFile' in globals():
-        async def get_async_file(self, filename: Optional[Union[Callable[['Track'], str], str]] = None,
-                                 audio_quality=AudioQuality.Master):
-            if callable(filename):
-                filename = filename(self)
-            elif filename is None:
-                filename = self.title
-            return await AsyncSeekableHTTPFile.create(await self.get_stream_url(audio_quality), filename, self.sess.sess)
 
-
-class Playlist(TidalObject):
+class Playlist(TidalObject, generic.TrackCollection):
+    # TODO: Reimplement Playlist.from_id and Playlist.__init__
+    #   Playlist field for `id` is named `uuid`, not `id` as in other objects
+    #   Should also fix @wvffle 's workaround with self.dict.update
     urlname = 'playlist'
+
+    def __repr__(self):
+        cls = self.__class__
+        return f"<{cls.__module__}.{cls.__qualname__} ({self.id}): {self.title}>"
 
     async def reload_info(self):
         resp = await self.sess.get(f"/v1/playlists/{self.id}", params={
@@ -184,8 +189,8 @@ class Playlist(TidalObject):
 
     @property
     def cover(self):
-        # NOTE: It may be also self.dict['squareImage'], needs testing
-        return Cover(self.sess, self.dict['image'])
+        # NOTE: It may be also self['squareImage'], needs testing
+        return Cover(self.sess, self['image'])
 
     async def _fetch_items(self, items=None, offset=0):
         # TODO [#11]: Make Playlist._fetch_items call just one request
@@ -198,29 +203,35 @@ class Playlist(TidalObject):
             "limit": limit,
         })
 
-        json = await resp.json()
+        json_ = await resp.json()
 
-        if offset + len(json['items']) >= json['totalNumberOfItems']:
-            return items + json['items']
+        if offset + len(json_['items']) >= json_['totalNumberOfItems']:
+            return items + json_['items']
 
         # @wvffle, get this recursion out of here plz
-        return await self._fetch_items(items + json['items'], offset + limit)
+        return await self._fetch_items(items + json_['items'], offset + limit)
 
-    async def tracks(self):
+    async def tracks(self) -> AsyncGenerator[Track, None]:
         # TODO [#12]: Convert Playlist.tracks to generator and don't load all tracks on the time
-        if 'items' not in self.dict:
-            self.dict['items'] = await self._fetch_items()
+        if 'items' not in self:
+            self['items'] = await self._fetch_items()
 
         tracks = []
-        for item in self.dict['items']:
+        for item in self['items']:
             if item['type'] == 'track':
                 tracks.append(item['item'])
 
         return [Track(self.sess, track) for track in tracks]
 
 
-class Album(TidalObject):
+class Album(TidalObject, generic.TrackCollection):
     urlname = 'album'
+
+    # TODO: Album.artist
+
+    def __repr__(self):
+        cls = self.__class__
+        return f"<{cls.__module__}.{cls.__qualname__} ({self.id}): {self.artist['name']} - {self.title}>"
 
     async def reload_info(self):
         resp = await self.sess.get(f"/v1/albums/{self.id}", params={
@@ -231,15 +242,17 @@ class Album(TidalObject):
 
     @property
     def cover(self):
-        return Cover(self.sess, self.dict['cover'])
+        return Cover(self.sess, self['cover'])
 
-    async def tracks(self):
+    async def tracks(self) -> AsyncGenerator[Track, None]:
         # TODO [#13]: Convert Album.tracks to generator
-        if 'items' not in self.dict:
+        # TODO: Find out if it is possible for tracks request on album to show not-all results
+        #   If it can - run multiple requests
+        if 'items' not in self:
             resp = await self.sess.get(f"/v1/albums/{self.id}/tracks", params={
                 "countryCode": self.sess.country_code
             })
 
             self.dict.update(await resp.json())
 
-        return [Track(self.sess, track) for track in self.dict['items']]
+        return [Track(self.sess, track) for track in self['items']]
