@@ -2,6 +2,7 @@ import base64
 import hashlib
 import os
 import urllib.parse
+from typing import Optional
 
 import aiohttp
 import music_service_async_interface as generic
@@ -165,9 +166,14 @@ class TidalMultiSession(TidalSession):
         self.client_id = client_id
         self._interactive_auth_getter = interactive_auth_url_getter
 
-    async def add_session(self):
-        sess = TidalSession(self.client_id, self._interactive_auth_getter)
-        await sess.login()
+    async def add_session(self, sess: Optional[TidalSession] = None):
+        if sess is None:
+            sess = TidalSession(self.client_id, self._interactive_auth_getter)
+            await sess.login()
+
+        if self._auth_info is None:
+            raise AuthorizationNeeded("tried to add unauthenticated Tidal session to multi-session object")
+
         self.sessions.append(sess)
 
     async def login(self):
