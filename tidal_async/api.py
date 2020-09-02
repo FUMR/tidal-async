@@ -206,17 +206,20 @@ class Playlist(TidalObject, generic.TrackCollection):
         total_items = 1
 
         while offset < total_items:
-            resp = await self.sess.get(f"/v1/playlists/{self.id}/tracks", params={
-                "countryCode": self.sess.country_code,
-                "offset": offset,
-                "limit": per_request_limit,
-            })
+            resp = await self.sess.get(
+                f"/v1/playlists/{self.id}/tracks",
+                params={
+                    "countryCode": self.sess.country_code,
+                    "offset": offset,
+                    "limit": per_request_limit,
+                },
+            )
             data = await resp.json()
 
-            total_items = data['totalNumberOfItems']
-            offset = data['offset'] + data['limit']
+            total_items = data["totalNumberOfItems"]
+            offset = data["offset"] + data["limit"]
 
-            for track in data['items']:
+            for track in data["items"]:
                 # python doesn't support `yield from` in async functions.. why?
                 yield Track(self.sess, track)
 
@@ -250,16 +253,19 @@ class Album(TidalObject, generic.TrackCollection):
         total_items = 1
 
         while offset < total_items:
-            resp = await self.sess.get(f"/v1/albums/{self.id}/tracks", params={
-                "countryCode": self.sess.country_code,
-                "offset": offset,
-                "limit": per_request_limit,
-            })
+            resp = await self.sess.get(
+                f"/v1/albums/{self.id}/tracks",
+                params={
+                    "countryCode": self.sess.country_code,
+                    "offset": offset,
+                    "limit": per_request_limit,
+                },
+            )
             data = await resp.json()
 
-            total_items = data['totalNumberOfItems']
-            offset = data['offset'] + data['limit']
+            total_items = data["totalNumberOfItems"]
+            offset = data["offset"] + data["limit"]
 
-            for track in data['items']:
+            for track in data["items"]:
                 # python doesn't support `yield from` in async functions.. why?
                 yield Track(self.sess, track)

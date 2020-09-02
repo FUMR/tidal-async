@@ -43,7 +43,7 @@ async def main(apk_file):
 
         # test zip creation and try to guess size
         def fname(t):
-            return f"{t.track_number:02d}. {t.title}.flac".replace('/', '|').replace('\\', '|')
+            return f"{t.track_number:02d}. {t.title}.flac".replace("/", "|").replace("\\", "|")
 
         files = (await t.get_async_file(filename=fname(t)) async for t in album.tracks())
         cover_file_size = len(await album.cover.get_async_file()) * len([t async for t in album.tracks()])
@@ -70,8 +70,8 @@ async def main(apk_file):
 
         zip_padding_size = 65535
 
-        chunk_size = 128*1024  # 128kB
-        with open('tmp/wtf.zip', 'wb') as outf:
+        chunk_size = 128 * 1024  # 128kB
+        with open("tmp/wtf.zip", "wb") as outf:
             nf = DebugFile(proxied_file=outf)
             nf.toggle_print_write()
             with ZipFile(nf, "w", allowZip64=False) as zipf:
@@ -85,7 +85,7 @@ async def main(apk_file):
                             while data := await f.read(chunk_size):
                                 fz.write(data)
                         nf.toggle_print_write()
-                zipf.comment = b'\0' * zip_padding_size
+                zipf.comment = b"\0" * zip_padding_size
 
         print(f"calculated additional zip data: {zip_data} B")
         print(f"audio files: {filesizes} B")
