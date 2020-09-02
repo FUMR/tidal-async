@@ -3,7 +3,7 @@ import sys
 from pprint import pprint
 from zipfile import ZipFile
 
-from tidal_async import TidalSession, extract_client_id, cli_auth_url_getter
+from tidal_async import TidalSession, cli_auth_url_getter, extract_client_id
 from zip import DebugFile
 
 
@@ -74,11 +74,11 @@ async def main(apk_file):
         with open('tmp/wtf.zip', 'wb') as outf:
             nf = DebugFile(proxied_file=outf)
             nf.toggle_print_write()
-            with ZipFile(nf, 'w', allowZip64=False) as zipf:
+            with ZipFile(nf, "w", allowZip64=False) as zipf:
                 async for f in files:
                     filesizes += len(f)
                     zip_data += 30 + 16 + 46 + 2 * len(f.name)
-                    with zipf.open(f.name, mode='w') as fz:
+                    with zipf.open(f.name, mode="w") as fz:
                         print(f.name)
                         nf.toggle_print_write()
                         async with f:
@@ -103,5 +103,5 @@ async def main(apk_file):
         # pprint([(t.title, t.audio_quality) for t in tracks])
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     asyncio.get_event_loop().run_until_complete(main(sys.argv[1]))

@@ -8,4 +8,3 @@ class AuthorizationError(Exception):
 
 class UnknownSession(Exception):
     pass
-

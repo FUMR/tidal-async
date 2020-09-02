@@ -70,7 +70,9 @@ class DebugFile(RawIOBase):
         return data
 
     def close(self):
-        print(f"{self.name} CLOSING - WRITTEN {self.written} B IN {self.writes} WRITES, READ {self._read} B IN {self.reads} READS")
+        print(
+            f"{self.name} CLOSING - WRITTEN {self.written} B IN {self.writes} WRITES, READ {self._read} B IN {self.reads} READS"
+        )
 
     def __enter__(self):
         print(f"{self.name} ENTERING")
