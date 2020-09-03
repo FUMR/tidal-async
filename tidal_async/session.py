@@ -7,20 +7,20 @@ from typing import Optional
 import aiohttp
 import music_service_async_interface as generic
 
-from tidal_async import Album, Playlist, Track
+from tidal_async import Album, Playlist, TidalObject, Track
 from tidal_async.exceptions import AuthorizationError, AuthorizationNeeded
 
 
 class TidalSession(generic.Session):
+    obj = TidalObject
     _redirect_uri = "https://tidal.com/android/login/auth"  # or tidal://login/auth
     _api_base_url = "https://api.tidal.com/"
     _oauth_authorize_url = "https://login.tidal.com/authorize"
     _oauth_token_url = "https://auth.tidal.com/v1/oauth2/token"
 
-    def __init__(self, client_id, interactive_auth_url_getter):
+    def __init__(self, client_id):
         self.client_id = client_id
         self.sess = aiohttp.ClientSession()
-        self._interactive_auth_getter = interactive_auth_url_getter
 
         self._auth_info = None
         self._refresh_token = None
@@ -43,7 +43,7 @@ class TidalSession(generic.Session):
             raise AuthorizationNeeded
         return self._auth_info["user"]["countryCode"]
 
-    async def login(self, force_relogin=False):
+    async def login(self, interactive_auth_url_getter, force_relogin=False):
         if self._auth_info is not None and not force_relogin:
             return
 
@@ -65,7 +65,7 @@ class TidalSession(generic.Session):
 
         authorization_url = urllib.parse.urljoin(self._oauth_authorize_url, "?" + qs)
 
-        auth_url = await self._interactive_auth_getter(authorization_url)
+        auth_url = await interactive_auth_url_getter(authorization_url)
 
         code = urllib.parse.parse_qs(urllib.parse.urlsplit(auth_url).query)["code"][0]
 
@@ -171,15 +171,16 @@ class TidalMultiSession(TidalSession):
     # TODO [#9]: [TidalMultiSession] Retry failed (404) requests (regionlock) on next session
     # TODO [#10]: [TidalMultiSession] Try file download request on all sessions in queue fullness order
     #   Someone told me that Tidal blocks downloading of files simultaneously, but I didn't really noticed that
-    def __init__(self, client_id, interactive_auth_url_getter):
+    def __init__(self, client_id):
         self.sessions = []
         self.client_id = client_id
-        self._interactive_auth_getter = interactive_auth_url_getter
 
-    async def add_session(self, sess: Optional[TidalSession] = None):
+    async def add_session(self, sess: Optional[TidalSession] = None, interactive_auth_url_getter=None):
         if sess is None:
-            sess = TidalSession(self.client_id, self._interactive_auth_getter)
-            await sess.login()
+            if interactive_auth_url_getter is None:
+                raise AuthorizationError("missing auth handler")
+            sess = TidalSession(self.client_id)
+            await sess.login(interactive_auth_url_getter)
 
         if self._auth_info is None:
             raise AuthorizationNeeded("tried to add unauthenticated Tidal session to multi-session object")
