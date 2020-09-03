@@ -56,13 +56,15 @@ try:
 
     from androguard.core.bytecodes.axml import ARSCParser
 
+except ImportError:
+
+    def extract_client_id(apk_file):
+        raise NotImplementedError
+
+
+else:
+
     def extract_client_id(apk_file):
         with ZipFile(apk_file) as apk:
             with apk.open("resources.arsc") as res:
                 return ARSCParser(res.read()).get_string("com.aspiro.tidal", "default_client_id")[1]
-
-
-except ImportError:
-
-    def extract_client_id(apk_file):
-        raise

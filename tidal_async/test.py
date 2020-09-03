@@ -1,16 +1,19 @@
 import asyncio
+import os
 import sys
 from pprint import pprint
 from zipfile import ZipFile
 
-from tidal_async import TidalSession, cli_auth_url_getter, extract_client_id
+from tidal_async import TidalSession, extract_client_id
 from zip import DebugFile
 
 
 async def main(apk_file):
     client_id = extract_client_id(apk_file)
     async with TidalSession(client_id) as sess:
-        await sess.login(cli_auth_url_getter)
+        # await sess.login(cli_auth_url_getter)
+        sess._refresh_token = os.getenv("TIDAL_REFRESH_TOKEN")
+        await sess.refresh_session()
 
         # for name, track, region in tracks:
         #     print(f"{name} - INFO")
