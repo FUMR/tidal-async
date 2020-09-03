@@ -71,7 +71,8 @@ class DebugFile(RawIOBase):
 
     def close(self):
         print(
-            f"{self.name} CLOSING - WRITTEN {self.written} B IN {self.writes} WRITES, READ {self._read} B IN {self.reads} READS"
+            f"{self.name} CLOSING - WRITTEN {self.written} B IN {self.writes} WRITES, "
+            f"READ {self._read} B IN {self.reads} READS"
         )
 
     def __enter__(self):

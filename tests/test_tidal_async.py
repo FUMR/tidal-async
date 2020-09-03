@@ -20,10 +20,12 @@ from tidal_async import Album, AudioQuality, Playlist, TidalSession, Track, extr
 #   - [ ] listing albums from artists
 #   - [x] loading cover arts
 #   - [x] parsing URLs
+#   - [ ] parsing artist URL
 #   - [ ] searching (first we need search)
 #   - [x] extracting client_id from Tidal Android `.apk`
 #   - [ ] TidalMultiSession tests (what kind of?)
 #   - [x] caching TidalObject
+#   - [ ] caching of artists
 
 
 @pytest.mark.asyncio
@@ -144,17 +146,16 @@ async def test_playlist_tracks(sess: TidalSession, id_, limit, first_title, last
     ),
 )
 async def test_url_parsing(sess: TidalSession, url_string, out_types, out_ids):
-    assert [(obj.__class__, obj.id) async for obj in sess.parse_urls(url_string)] == list(zip(out_types, out_ids))
+    assert [(obj.__class__, obj.get_id()) async for obj in sess.parse_urls(url_string)] == list(zip(out_types, out_ids))
 
 
 @pytest.mark.asyncio
 @pytest.mark.parametrize(
     "url",
     (
-        ("http://www.tidal.com/track/50096997"),
-        ("http://www.tidal.com/album/139475048"),
-        ("http://www.tidal.com/playlist/dcbab999-7523-4e2f-adf4-57d10fc17516"),
-        # add artist
+        "http://www.tidal.com/track/50096997",
+        "http://www.tidal.com/album/139475048",
+        "http://www.tidal.com/playlist/dcbab999-7523-4e2f-adf4-57d10fc17516",
     ),
 )
 async def test_object_cache(sess: TidalSession, url):

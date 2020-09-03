@@ -7,20 +7,19 @@ from typing import Optional
 import aiohttp
 import music_service_async_interface as generic
 
-from tidal_async import Album, Playlist, TidalObject, Track
+from tidal_async import Album, AudioQuality, Playlist, TidalObject, Track
 from tidal_async.exceptions import AuthorizationError, AuthorizationNeeded
 
 
 class TidalSession(generic.Session):
-    obj = TidalObject
     _redirect_uri = "https://tidal.com/android/login/auth"  # or tidal://login/auth
     _api_base_url = "https://api.tidal.com/"
     _oauth_authorize_url = "https://login.tidal.com/authorize"
     _oauth_token_url = "https://auth.tidal.com/v1/oauth2/token"
 
-    def __init__(self, client_id):
+    def __init__(self, client_id, sess: Optional[aiohttp.ClientSession] = None):
+        super().__init__(TidalObject, AudioQuality, sess)
         self.client_id = client_id
-        self.sess = aiohttp.ClientSession()
 
         self._auth_info = None
         self._refresh_token = None
@@ -187,7 +186,7 @@ class TidalMultiSession(TidalSession):
 
         self.sessions.append(sess)
 
-    async def login(self):
+    async def login(self, *args, **kwargs):
         raise NotImplementedError
 
     async def logout(self, sess_num=None):

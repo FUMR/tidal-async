@@ -3,7 +3,7 @@ import enum
 import json
 from abc import ABC, abstractmethod
 from functools import lru_cache
-from typing import TYPE_CHECKING, AsyncGenerator, List
+from typing import TYPE_CHECKING, AsyncGenerator
 
 import music_service_async_interface as generic
 
@@ -26,6 +26,7 @@ class AudioQuality(generic.AudioQuality):
 
 class AudioMode(enum.Enum):
     # TODO [#2]: Find more audio modes
+    #   atm it will still be a string
     Stereo = "STEREO"
 
 
@@ -40,9 +41,14 @@ class Cover(generic.Cover):
 
 
 class TidalObject(generic.Object, ABC):
-    def __init__(self, sess: "TidalSession", dict_):
+    def __init__(self, sess: "TidalSession", dict_, id_field_name="id"):
         self.sess: "TidalSession" = sess
         self.dict = dict_
+        self._id_field_name = id_field_name
+
+    def __repr__(self):
+        cls = self.__class__
+        return f"<{cls.__module__}.{cls.__qualname__} ({self.get_id()})>"
 
     @abstractmethod
     async def reload_info(self):
@@ -51,16 +57,21 @@ class TidalObject(generic.Object, ABC):
     @classmethod
     @lru_cache
     @cacheable
-    async def from_id(cls, sess: "TidalSession", id_):
-        # TODO [#20]: Make sure from_id cannot be called on TidalObject
-        #   Same goes for from_url
-        #   I was pretty sure I can just mark it @abstractmethod and don't override it, but it looks like I was wrong
-        obj = cls(sess, {"id": id_})
+    async def from_id(cls, sess: "TidalSession", id_, id_field_name="id") -> "TidalObject":
+        if cls is TidalObject:
+            # method should be used on child classes
+            raise NotImplementedError
+
+        obj = cls(sess, {id_field_name: id_}, id_field_name)
         await obj.reload_info()
         return obj
 
     @classmethod
-    async def from_url(cls, sess: "TidalSession", url):
+    async def from_url(cls, sess: "TidalSession", url) -> "TidalObject":
+        if cls is TidalObject:
+            # method should be used on child classes
+            raise NotImplementedError
+
         if hasattr(cls, "urlname"):
             return await cls.from_id(sess, id_from_url(url, cls.urlname))
 
@@ -69,6 +80,9 @@ class TidalObject(generic.Object, ABC):
 
     async def get_url(self) -> str:
         return self.url
+
+    def get_id(self):
+        return self[self._id_field_name]
 
     def __getitem__(self, item):
         return self.dict[snake_to_camel(item)]
@@ -86,11 +100,11 @@ class Track(TidalObject, generic.Track):
 
     def __repr__(self):
         cls = self.__class__
-        return f"<{cls.__module__}.{cls.__qualname__} ({self.id}): {self.artist_name} - {self.title}>"
+        return f"<{cls.__module__}.{cls.__qualname__} ({self.get_id()}): {self.artist_name} - {self.title}>"
 
     async def reload_info(self):
         resp = await self.sess.get(
-            f"/v1/tracks/{self.id}",
+            f"/v1/tracks/{self.get_id()}",
             params={
                 "countryCode": self.sess.country_code,
             },
@@ -122,7 +136,7 @@ class Track(TidalObject, generic.Track):
 
     async def _playbackinfopostpaywall(self, audio_quality=AudioQuality.Master):
         resp = await self.sess.get(
-            f"/v1/tracks/{self.id}/playbackinfopostpaywall",
+            f"/v1/tracks/{self.get_id()}/playbackinfopostpaywall",
             params={
                 "playbackmode": "STREAM",
                 "assetpresentation": "FULL",
@@ -179,25 +193,27 @@ class Track(TidalObject, generic.Track):
 
 
 class Playlist(TidalObject, generic.TrackCollection):
-    # TODO [#23]: Reimplement Playlist.from_id and Playlist.__init__
-    #   Playlist field for `id` is named `uuid`, not `id` as in other objects
-    #   Should also fix @wvffle 's workaround with self.dict.update
     urlname = "playlist"
 
     def __repr__(self):
         cls = self.__class__
-        return f"<{cls.__module__}.{cls.__qualname__} ({self.id}): {self.title}>"
+        return f"<{cls.__module__}.{cls.__qualname__} ({self.get_id()}): {self.title}>"
 
     async def reload_info(self):
         resp = await self.sess.get(
-            f"/v1/playlists/{self.id}",
+            f"/v1/playlists/{self.get_id()}",
             params={
                 "countryCode": self.sess.country_code,
             },
         )
 
-        # NOTE: I'm updating self.dict and not reassigning it as the return from the api does not contain the `id` key
-        self.dict.update(await resp.json())
+        self.dict = await resp.json()
+
+    @classmethod
+    async def from_id(cls, sess: "TidalSession", id_: str) -> "Playlist":
+        playlist = await super().from_id(sess, id_, "uuid")
+        assert isinstance(playlist, cls)
+        return playlist
 
     @property
     def cover(self):
@@ -210,7 +226,7 @@ class Playlist(TidalObject, generic.TrackCollection):
 
         while offset < total_items:
             resp = await self.sess.get(
-                f"/v1/playlists/{self.id}/tracks",
+                f"/v1/playlists/{self.get_id()}/tracks",
                 params={
                     "countryCode": self.sess.country_code,
                     "offset": offset,
@@ -235,11 +251,11 @@ class Album(TidalObject, generic.TrackCollection):
 
     def __repr__(self):
         cls = self.__class__
-        return f"<{cls.__module__}.{cls.__qualname__} ({self.id}): {self.artist['name']} - {self.title}>"
+        return f"<{cls.__module__}.{cls.__qualname__} ({self.get_id()}): {self.artist['name']} - {self.title}>"
 
     async def reload_info(self):
         resp = await self.sess.get(
-            f"/v1/albums/{self.id}",
+            f"/v1/albums/{self.get_id()}",
             params={
                 "countryCode": self.sess.country_code,
             },
@@ -257,7 +273,7 @@ class Album(TidalObject, generic.TrackCollection):
 
         while offset < total_items:
             resp = await self.sess.get(
-                f"/v1/albums/{self.id}/tracks",
+                f"/v1/albums/{self.get_id()}/tracks",
                 params={
                     "countryCode": self.sess.country_code,
                     "offset": offset,
