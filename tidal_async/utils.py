@@ -37,8 +37,8 @@ async def cli_auth_url_getter(authorization_url):
     return input("Enter auth_url: ")
 
 
-# < https://stackoverflow.com/a/46723144 >
 class Cacheable:
+    # NOTE: Used snipped from https://stackoverflow.com/a/46723144
     def __init__(self, co):
         self.co = co
         self.done = False
@@ -55,14 +55,12 @@ class Cacheable:
 
 
 def cacheable(f):
+    # NOTE: Used snipped from https://stackoverflow.com/a/46723144
     def wrapped(*args, **kwargs):
         r = f(*args, **kwargs)
         return Cacheable(r)
 
     return wrapped
-
-
-# </ https://stackoverflow.com/a/46723144 >
 
 
 def parse_title(result, artists=None):
