@@ -7,6 +7,9 @@ from zipfile import ZipFile
 from tidal_async import TidalSession, extract_client_id
 from zip import DebugFile
 
+# TODO: TEST TODO
+#   plz create this issue you piece of github-action..
+
 
 async def main(apk_file):
     client_id = extract_client_id(apk_file)
