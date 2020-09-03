@@ -6,23 +6,24 @@ import pytest
 from tidal_async import Album, AudioQuality, Playlist, TidalSession, Track, extract_client_id
 
 # TODO [#19]: Unit tests!
-#   - [_] login process (not sure how to do this - it's interactive oauth2)
+#   - [ ] login process (not sure how to do this - it's interactive oauth2)
 #   - [x] session refreshing
 #   - [x] loading track info
 #   - [x] downloading tracks
-#   - [_] track lyrics
-#   - [_] track metadata generation
+#   - [ ] track lyrics
+#   - [ ] track metadata generation
 #   - [x] loading album info
 #   - [x] listing tracks from albums
 #   - [x] loading playlist info
 #   - [x] listing tracks from playlists
-#   - [_] loading artists (first we need artists)
-#   - [_] listing albums from artists
+#   - [ ] loading artists (first we need artists)
+#   - [ ] listing albums from artists
 #   - [x] loading cover arts
 #   - [x] parsing URLs
-#   - [_] searching (first we need search)
+#   - [ ] searching (first we need search)
 #   - [x] extracting client_id from Tidal Android `.apk`
-#   - [_] TidalMultiSession tests (what kind of?)
+#   - [ ] TidalMultiSession tests (what kind of?)
+#   - [x] caching TidalObject
 
 
 @pytest.mark.asyncio
@@ -144,6 +145,22 @@ async def test_playlist_tracks(sess: TidalSession, id_, limit, first_title, last
 )
 async def test_url_parsing(sess: TidalSession, url_string, out_types, out_ids):
     assert [(obj.__class__, obj.id) async for obj in sess.parse_urls(url_string)] == list(zip(out_types, out_ids))
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize(
+    "url",
+    (
+        ("http://www.tidal.com/track/50096997"),
+        ("http://www.tidal.com/album/139475048"),
+        ("http://www.tidal.com/playlist/dcbab999-7523-4e2f-adf4-57d10fc17516"),
+        # add artist
+    ),
+)
+async def test_object_cache(sess: TidalSession, url):
+    obj1 = await sess.object_from_url(url)
+    obj2 = await sess.object_from_url(url)
+    assert obj1 is obj2
 
 
 @pytest.mark.asyncio
