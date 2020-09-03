@@ -18,7 +18,7 @@ from tidal_async import Album, AudioQuality, Playlist, TidalSession, Track, extr
 #   - [x] listing tracks from playlists
 #   - [_] loading artists (first we need artists)
 #   - [_] listing albums from artists
-#   - [_] loading cover arts
+#   - [x] loading cover arts
 #   - [x] parsing URLs
 #   - [_] searching (first we need search)
 #   - [x] extracting client_id from Tidal Android `.apk`
@@ -143,6 +143,29 @@ async def test_playlist_tracks(sess: TidalSession, id_, limit, first_title, last
 )
 async def test_url_parsing(sess: TidalSession, url_string, out_types, out_ids):
     assert [(obj.__class__, obj.id) async for obj in sess.parse_urls(url_string)] == list(zip(out_types, out_ids))
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize(
+    "object_url, cover_size, sha256sum",
+    (
+        (
+            "http://www.tidal.com/track/50096997",
+            (640, 640),
+            "5c3b712621d6b3feb00ca0a4cab78b589dae63a1ab9a75c8c29618f0f94fa1f1",
+        ),
+        (
+            "http://www.tidal.com/album/139475048",
+            (320, 320),
+            "562e0276b28fb589f9f4efbc26cff4427fc2c4f9f9756ef2d459bbbbdf8d0051",
+        ),
+    ),
+)
+async def test_cover_download(sess: TidalSession, object_url, cover_size, sha256sum):
+    cover = (await sess.object_from_url(object_url)).cover
+    file = await cover.get_async_file(size=cover_size)
+    async with file:
+        assert hashlib.sha256(await file.read()).hexdigest() == sha256sum
 
 
 @pytest.mark.asyncio
