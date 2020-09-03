@@ -122,6 +122,7 @@ async def test_playlist_tracks(sess: TidalSession, id_, limit, first_title, last
             (Playlist,),
             ("dcbab999-7523-4e2f-adf4-57d10fc17516",),
         ),
+        ("https://listen.tidal.com/album/110359322/track/110359323", (Track,), (110359323,)),
         # text sent by Android app when sharing track
         (
             "Check out this track on TIDAL"
