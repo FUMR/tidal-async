@@ -3,7 +3,7 @@ import os
 
 import pytest
 
-from tidal_async import Album, AudioQuality, Playlist, TidalSession, Track
+from tidal_async import Album, AudioQuality, Playlist, TidalSession, Track, extract_client_id
 
 # TODO [#19]: Unit tests!
 #   - [_] login process (not sure how to do this - it's interactive oauth2)
@@ -21,7 +21,7 @@ from tidal_async import Album, AudioQuality, Playlist, TidalSession, Track
 #   - [_] loading cover arts
 #   - [x] parsing URLs
 #   - [_] searching (first we need search)
-#   - [_] extracting client_id from Tidal Android `.apk`
+#   - [x] extracting client_id from Tidal Android `.apk`
 #   - [_] TidalMultiSession tests (what kind of?)
 
 
@@ -162,3 +162,21 @@ async def test_track_download(sess: TidalSession, id_, quality, sha256sum):
             sha256.update(data)
 
     assert sha256.hexdigest() == sha256sum
+
+
+@pytest.mark.asyncio
+async def test_client_id_extraction():
+    from io import BytesIO
+
+    import aiohttp
+
+    apk_file = BytesIO()
+
+    async with aiohttp.ClientSession() as session:
+        async with session.get(os.getenv("TIDAL_APK_URL")) as resp:
+            while data := await resp.content.read(128 * 1024):  # 128kB chunk size
+                apk_file.write(data)
+
+    apk_file.seek(0)
+
+    assert extract_client_id(apk_file) == os.getenv("TIDAL_CLIENT_ID")
