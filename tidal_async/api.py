@@ -2,11 +2,12 @@ import base64
 import enum
 import json
 from abc import ABC, abstractmethod
+from functools import lru_cache
 from typing import TYPE_CHECKING, AsyncGenerator, List
 
 import music_service_async_interface as generic
 
-from tidal_async.utils import id_from_url, parse_title, snake_to_camel
+from tidal_async.utils import cacheable, id_from_url, parse_title, snake_to_camel
 
 if TYPE_CHECKING:
     from tidal_async import TidalSession
@@ -48,6 +49,8 @@ class TidalObject(generic.Object, ABC):
         ...
 
     @classmethod
+    @lru_cache
+    @cacheable
     async def from_id(cls, sess: "TidalSession", id_):
         # TODO [#20]: Make sure from_id cannot be called on TidalObject
         #   Same goes for from_url
