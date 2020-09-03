@@ -17,7 +17,7 @@ if TYPE_CHECKING:
 #   needs https://github.com/FUMR/music-service-async-interface/issues/5 to be resolved first
 
 
-class AudioQuality(enum.Enum):
+class AudioQuality(generic.AudioQuality):
     Normal = "LOW"
     High = "HIGH"
     HiFi = "LOSSLESS"
