@@ -8,8 +8,9 @@ from zip import DebugFile
 
 
 async def main(apk_file):
-    async with TidalSession(extract_client_id(apk_file), cli_auth_url_getter) as sess:
-        await sess.login()
+    client_id = extract_client_id(apk_file)
+    async with TidalSession(client_id) as sess:
+        await sess.login(cli_auth_url_getter)
 
         # for name, track, region in tracks:
         #     print(f"{name} - INFO")
@@ -21,6 +22,20 @@ async def main(apk_file):
         #     print(f"\n{name} - URL - Region: {region}")
         #     pprint(await sess.track_url(track, region))
         #     print("\n")
+
+        # test parsing URLs from text
+        print("URL Parsing")
+        objects = [
+            o
+            async for o in sess.parse_urls(
+                """
+        Check out this track on TIDAL: "PATOINTELIGENCJA (REMIX ZAJEBI$TY)" by WIXAPOL, Mata https://tidal.com/track/150525636
+        http://www.tidal.com/track/79580198
+        http://www.tidal.com/album/91969976
+        """,
+            )
+        ]
+        pprint(objects)
 
         # test loading albums, playlists and tracks from them
         print("Album")
