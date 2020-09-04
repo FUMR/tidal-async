@@ -25,6 +25,8 @@ jobs:
           restore-keys: |
             ${{ runner.os }}-poetry-
 
+      - run: poetry install
+
       - run: poetry run pytest
         env:
           TIDAL_APK_URL: ${{ secrets.TIDAL_APK_URL }}
