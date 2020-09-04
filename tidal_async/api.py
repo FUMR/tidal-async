@@ -153,7 +153,7 @@ class Track(TidalObject, generic.Track):
     async def get_file_url(self, audio_quality=AudioQuality.Master) -> str:
         # TODO [#16]: [Track.get_stream_url] Raise exception when audio quality is worse than min_audio_quality
         #   eg. InsufficientAudioQuality
-        # TODO [#17]: [Track.get_stream_url] Allow to specify min_audio_quality in per-session basics
+        # TODO [#17]: [Track.get_stream_url] Allow to specify min_audio_quality and audio_quality in per-session basics
         return (await self._stream_manifest(audio_quality))["urls"][0]
 
     async def get_metadata(self):
