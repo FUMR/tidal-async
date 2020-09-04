@@ -12,13 +12,16 @@ from tidal_async.exceptions import AuthorizationError, AuthorizationNeeded
 
 
 class TidalSession(generic.Session):
+    obj = TidalObject
+    quality = AudioQuality
+
     _redirect_uri = "https://tidal.com/android/login/auth"  # or tidal://login/auth
     _api_base_url = "https://api.tidal.com/"
     _oauth_authorize_url = "https://login.tidal.com/authorize"
     _oauth_token_url = "https://auth.tidal.com/v1/oauth2/token"
 
     def __init__(self, client_id, sess: Optional[aiohttp.ClientSession] = None):
-        super().__init__(TidalObject, AudioQuality, sess)
+        super().__init__(sess)
         self.client_id = client_id
 
         self._auth_info = None

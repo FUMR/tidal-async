@@ -8,24 +8,28 @@ from tidal_async import Album, AudioQuality, Playlist, TidalSession, Track, extr
 # TODO [#19]: Unit tests!
 #   - [ ] login process (not sure how to do this - it's interactive oauth2)
 #   - [x] session refreshing
-#   - [x] loading track info
-#   - [x] downloading tracks
-#   - [ ] track lyrics
-#   - [ ] track metadata generation
+#   - [ ] Track
+#       - [x] loading track info
+#       - [x] downloading tracks
+#       - [ ] track lyrics (no lyrics support atm)
+#       - [ ] track metadata generation
 #   - [x] loading album info
-#   - [x] listing tracks from albums
+#       - [x] listing tracks from albums
 #   - [x] loading playlist info
-#   - [x] listing tracks from playlists
+#       - [x] listing tracks from playlists
 #   - [ ] loading artists (first we need artists)
-#   - [ ] listing albums from artists
+#       - [ ] listing albums from artists
 #   - [x] loading cover arts
 #   - [x] parsing URLs
-#   - [ ] parsing artist URL
+#       - [ ] parsing artist URL
 #   - [ ] searching (first we need search)
 #   - [x] extracting client_id from Tidal Android `.apk`
 #   - [ ] TidalMultiSession tests (what kind of?)
-#   - [x] caching TidalObject
-#   - [ ] caching of artists
+#   - [x] caching TidalObject creation
+#       - [x] caching of tracks
+#       - [x] caching of albums
+#       - [x] caching of playlists
+#       - [ ] caching of artists (first we need artists)
 
 
 @pytest.mark.asyncio
@@ -115,6 +119,8 @@ async def test_playlist_tracks(sess: TidalSession, id_, limit, first_title, last
     (
         # just empty string
         ("", (), ()),
+        # tidal url not pointing to any object
+        ("https://offer.tidal.com/campaigns/5ced61f174bf330018621c43/products", (), ()),
         # just one url and nothing else
         ("http://www.tidal.com/track/50096997", (Track,), (50096997,)),
         ("http://www.tidal.com/album/139475048", (Album,), (139475048,)),
