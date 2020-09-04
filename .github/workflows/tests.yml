@@ -25,7 +25,7 @@ jobs:
           restore-keys: |
             ${{ runner.os }}-poetry-
 
-      - run: poetry install
+      - run: poetry install -E client_id -E filelike
 
       - run: poetry run pytest
         env:
