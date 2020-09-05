@@ -3,10 +3,11 @@ import enum
 import json
 from abc import ABC, abstractmethod
 from functools import lru_cache
-from typing import TYPE_CHECKING, AsyncGenerator
+from typing import TYPE_CHECKING, AsyncGenerator, Optional
 
 import music_service_async_interface as generic
 
+from tidal_async.exceptions import InsufficientAudioQuality
 from tidal_async.utils import cacheable, id_from_url, parse_title, snake_to_camel
 
 if TYPE_CHECKING:
@@ -134,27 +135,39 @@ class Track(TidalObject, generic.Track):
     def audio_quality(self):
         return AudioQuality(self["audioQuality"])
 
-    async def _playbackinfopostpaywall(self, audio_quality=AudioQuality.Master):
+    async def _playbackinfopostpaywall(self, preferred_audio_quality):
         resp = await self.sess.get(
             f"/v1/tracks/{self.get_id()}/playbackinfopostpaywall",
             params={
                 "playbackmode": "STREAM",
                 "assetpresentation": "FULL",
-                "audioquality": audio_quality.value,
+                "audioquality": preferred_audio_quality.value,
             },
         )
 
         return await resp.json()
 
-    async def _stream_manifest(self, audio_quality=AudioQuality.Master):
-        data = await self._playbackinfopostpaywall(audio_quality)
-        return json.loads(base64.b64decode(data["manifest"]))
+    async def _stream_manifest(self, preferred_audio_quality):
+        data = await self._playbackinfopostpaywall(preferred_audio_quality)
+        return json.loads(base64.b64decode(data["manifest"])), data
 
-    async def get_file_url(self, audio_quality=AudioQuality.Master) -> str:
-        # TODO [#16]: [Track.get_stream_url] Raise exception when audio quality is worse than min_audio_quality
-        #   eg. InsufficientAudioQuality
-        # TODO [#17]: [Track.get_stream_url] Allow to specify min_audio_quality and audio_quality in per-session basics
-        return (await self._stream_manifest(audio_quality))["urls"][0]
+    async def get_file_url(
+        self,
+        required_quality: Optional[AudioQuality] = None,
+        preferred_quality: Optional[AudioQuality] = None,
+    ) -> str:
+        if preferred_quality is None:
+            preferred_quality = self.sess.preferred_audio_quality
+        if required_quality is None:
+            required_quality = self.sess.required_audio_quality
+
+        manifest, playback_info = await self._stream_manifest(preferred_quality)
+        quality = AudioQuality(playback_info["audioQuality"])
+
+        if quality < required_quality:
+            raise InsufficientAudioQuality(f"Got {quality} for {self}, required audio quality is {required_quality}")
+
+        return manifest["urls"][0]
 
     async def get_metadata(self):
         # TODO [#22]: fix Track.get_metadata
