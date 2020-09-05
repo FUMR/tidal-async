@@ -195,26 +195,40 @@ async def test_cover_download(sess: TidalSession, object_url, cover_size, sha256
 
 @pytest.mark.asyncio
 @pytest.mark.parametrize(
-    "id_, required_quality, preferred_quality, sha256sum",
+    "id_, required_quality, preferred_quality, file_size, mimetype, etag",
     (
         (
-            22563745,
+            152676390,
             AudioQuality.Normal,
             AudioQuality.Normal,
-            "55e2b96b757790a754141510dd8b9c7db99a1a094645bd1bafae349e04c6ae16",
+            3114802,
+            "audio/mp4",
+            '"1751009e4a30270dda182b034757e195"',
+        ),
+        (
+            152676390,
+            AudioQuality.High,
+            AudioQuality.High,
+            10347474,
+            "audio/mp4",
+            '"970df936b04363528662c9c74b714d13-2"',
+        ),
+        (152676390, AudioQuality.HiFi, AudioQuality.HiFi, 30980403, "audio/flac", '"3bb27f3e6d8f7fd987bcc0d3cdc7c452"'),
+        (
+            152676390,
+            AudioQuality.Master,
+            AudioQuality.Master,
+            57347695,
+            "audio/flac",
+            '"3ed31735943386e6effb814dba8e77b6-7"',
         ),
     ),
 )
-async def test_track_download(sess: TidalSession, id_, required_quality, preferred_quality, sha256sum):
-    sha256 = hashlib.sha256()
+async def test_track_download(sess: TidalSession, id_, required_quality, preferred_quality, file_size, mimetype, etag):
     track = await sess.track(id_)
     file = await track.get_async_file(required_quality, preferred_quality)
-    file.timeout = 300
-    async with file:
-        while data := await file.read(128 * 1024):  # 128kB chunk size
-            sha256.update(data)
 
-    assert sha256.hexdigest() == sha256sum
+    assert len(file) == file_size and file.mimetype == mimetype and file.resp_headers["ETag"] == etag
 
 
 @pytest.mark.asyncio
