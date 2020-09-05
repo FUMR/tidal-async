@@ -195,16 +195,28 @@ async def test_cover_download(sess: TidalSession, object_url, cover_size, sha256
 
 @pytest.mark.asyncio
 @pytest.mark.parametrize(
-    "id_, quality, sha256sum",
+    "id_, required_quality, preferred_quality, sha256sum",
     (
-        (22563745, AudioQuality.HiFi, "1bc70dd10381db1a6f7484f3b5e7e1e207bbfd70e31c42c437c88f82a752c26d"),
-        (22563746, AudioQuality.HiFi, "6e7aceef2f8642a5a05b1d3d70d7ec5d7182b617abda5c35613611754d31ff81"),
+        # preferred quality is highest available for this track
+        (
+            22563745,
+            AudioQuality.HiFi,
+            AudioQuality.HiFi,
+            "1bc70dd10381db1a6f7484f3b5e7e1e207bbfd70e31c42c437c88f82a752c26d",
+        ),
+        # preferred is bigger than available, required is equal
+        (
+            22563746,
+            AudioQuality.HiFi,
+            AudioQuality.Master,
+            "6e7aceef2f8642a5a05b1d3d70d7ec5d7182b617abda5c35613611754d31ff81",
+        ),
     ),
 )
-async def test_track_download(sess: TidalSession, id_, quality, sha256sum):
+async def test_track_download(sess: TidalSession, id_, required_quality, preferred_quality, sha256sum):
     sha256 = hashlib.sha256()
     track = await sess.track(id_)
-    file = await track.get_async_file(audio_quality=quality)
+    file = await track.get_async_file(required_quality, preferred_quality)
     async with file:
         while data := await file.read(128 * 1024):  # 128kB chunk size
             sha256.update(data)
