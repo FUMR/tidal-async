@@ -12,8 +12,8 @@ from tidal_async.exceptions import AuthorizationError, AuthorizationNeeded
 
 
 class TidalSession(generic.Session):
-    obj = TidalObject
-    quality = AudioQuality
+    _obj = TidalObject
+    _quality = AudioQuality
 
     _redirect_uri = "https://tidal.com/android/login/auth"  # or tidal://login/auth
     _api_base_url = "https://api.tidal.com/"
