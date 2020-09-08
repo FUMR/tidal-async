@@ -7,7 +7,7 @@ authors = ["JuniorJPDJ <dev@juniorjpdj.pl>", "Kasper Seweryn <github@wvffle.net>
 [tool.poetry.dependencies]
 python = "^3.7"
 aiohttp = "^3.6"
-music-service-async-interface = { git = "https://github.com/FUMR/music-service-async-interface.git", rev = "43b0e713f4725ff600cffb6e026e0da8958cb296" }
+music-service-async-interface = { git = "https://github.com/FUMR/music-service-async-interface.git", rev = "b4b64a98411b57582c4205a9c95a3f93664cd71d" }
 androguard = { version = "^3.3.5", optional = true }
 http-seekable-file = { git = "https://github.com/JuniorJPDJ/http-seekable-file.git", tag = "v0.3.0", extras = ["async"], optional = true }
 

@@ -155,6 +155,7 @@ class Track(TidalObject, generic.Track):
         self,
         required_quality: Optional[AudioQuality] = None,
         preferred_quality: Optional[AudioQuality] = None,
+        **kwargs,
     ) -> str:
         if preferred_quality is None:
             preferred_quality = self.sess.preferred_audio_quality
@@ -170,8 +171,10 @@ class Track(TidalObject, generic.Track):
         return manifest["urls"][0]
 
     async def get_metadata(self):
-        # TODO [#22]: fix Track.get_metadata
-        #   and add lyrics if possible
+        # TODO [#22]: Rewrite Track.get_metadata
+        #   - [ ] lyrics
+        #   - [ ] rewrite title parsing
+        #   - [ ] replayGain?
         album = self.album
         await album.reload_info()
 
@@ -205,7 +208,7 @@ class Track(TidalObject, generic.Track):
         return tags
 
 
-class Playlist(TidalObject, generic.TrackCollection):
+class Playlist(TidalObject, generic.ObjectCollection[Track]):
     urlname = "playlist"
 
     def __repr__(self):
@@ -223,8 +226,8 @@ class Playlist(TidalObject, generic.TrackCollection):
         self.dict = await resp.json()
 
     @classmethod
-    async def from_id(cls, sess: "TidalSession", id_: str) -> "Playlist":
-        playlist = await super().from_id(sess, id_, "uuid")
+    async def from_id(cls, sess: "TidalSession", id_: str, id_field_name="uuid") -> "Playlist":
+        playlist = await super().from_id(sess, id_, id_field_name)
         assert isinstance(playlist, cls)
         return playlist
 
@@ -256,7 +259,7 @@ class Playlist(TidalObject, generic.TrackCollection):
                 yield Track(self.sess, track)
 
 
-class Album(TidalObject, generic.TrackCollection):
+class Album(TidalObject, generic.ObjectCollection[Track]):
     urlname = "album"
 
     # TODO [#24]: Album.artist
