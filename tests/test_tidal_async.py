@@ -3,7 +3,7 @@ import os
 
 import pytest
 
-from tidal_async import Album, AudioQuality, Playlist, TidalSession, Track, extract_client_id
+from tidal_async import Album, Artist, AudioQuality, Playlist, TidalSession, Track, extract_client_id
 
 # TODO [#19]: Unit tests!
 #   - [ ] login process (not sure how to do this - it's interactive oauth2)
@@ -17,11 +17,10 @@ from tidal_async import Album, AudioQuality, Playlist, TidalSession, Track, extr
 #       - [x] listing tracks from albums
 #   - [x] loading playlist info
 #       - [x] listing tracks from playlists
-#   - [ ] loading artists (first we need artists)
-#       - [ ] listing albums from artists
+#   - [x] loading artists
+#       - [x] listing albums from artists
 #   - [x] loading cover arts
 #   - [x] parsing URLs
-#       - [ ] parsing artist URL
 #   - [ ] searching (first we need search)
 #   - [x] extracting client_id from Tidal Android `.apk`
 #   - [ ] TidalMultiSession tests (what kind of?)
@@ -29,7 +28,7 @@ from tidal_async import Album, AudioQuality, Playlist, TidalSession, Track, extr
 #       - [x] caching of tracks
 #       - [x] caching of albums
 #       - [x] caching of playlists
-#       - [ ] caching of artists (first we need artists)
+#       - [x] caching of artists
 
 
 @pytest.mark.asyncio
@@ -52,28 +51,28 @@ async def sess():
 
 @pytest.mark.asyncio
 @pytest.mark.parametrize(
-    "id_, title",
+    "id_, artist, title",
     (
-        (79580198, "Dogs Like Socks"),
-        (22563749, "Own It"),
+        (79580198, "Psychostick", "Dogs Like Socks"),
+        (22563749, "Drake", "Own It"),
     ),
 )
-async def test_track_title(sess: TidalSession, id_, title):
+async def test_track_title(sess: TidalSession, id_, artist, title):
     track = await sess.track(id_)
-    assert track.title == title
+    assert track.title == title and track.artist_name == artist
 
 
 @pytest.mark.asyncio
 @pytest.mark.parametrize(
-    "id_, title",
+    "id_, artist, title",
     (
-        (91969976, "Do"),
-        (22563744, "Nothing Was The Same"),
+        (91969976, "Psychostick", "Do"),
+        (22563744, "Drake", "Nothing Was The Same"),
     ),
 )
-async def test_album_title(sess: TidalSession, id_, title):
+async def test_album_title(sess: TidalSession, id_, artist, title):
     album = await sess.album(id_)
-    assert album.title == title
+    assert album.title == title and album.artist.name == artist
 
 
 @pytest.mark.asyncio
@@ -115,6 +114,28 @@ async def test_playlist_tracks(sess: TidalSession, id_, limit, first_title, last
 
 @pytest.mark.asyncio
 @pytest.mark.parametrize(
+    "id_, name",
+    (("12832", "Scorpions"),),
+)
+async def test_artist_name(sess: TidalSession, id_, name):
+    artist = await sess.artist(id_)
+    assert artist.name == name
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize(
+    "id_, limit, first_title, last_title",
+    (("12832", 10, "Born To Touch Your Feelings - Best of Rock Ballads", "Fly To The Rainbow"),),
+)
+async def test_artist_albums(sess: TidalSession, id_, limit, first_title, last_title):
+    artist = await sess.artist(id_)
+    albums = [album async for album in artist.albums(per_request_limit=limit)]
+    assert albums[0].title == first_title
+    assert albums[-1].title == last_title
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize(
     "url_string, out_types, out_ids",
     (
         # just empty string
@@ -132,6 +153,7 @@ async def test_playlist_tracks(sess: TidalSession, id_, limit, first_title, last
             ("dcbab999-7523-4e2f-adf4-57d10fc17516",),
         ),
         ("https://listen.tidal.com/album/110359322/track/110359323", (Track,), (110359323,)),
+        ("https://listen.tidal.com/artist/12832", (Artist,), (12832,)),
         # text sent by Android app when sharing track
         (
             "Check out this track on TIDAL"
@@ -162,6 +184,7 @@ async def test_url_parsing(sess: TidalSession, url_string, out_types, out_ids):
         "http://www.tidal.com/track/50096997",
         "http://www.tidal.com/album/139475048",
         "http://www.tidal.com/playlist/dcbab999-7523-4e2f-adf4-57d10fc17516",
+        "https://listen.tidal.com/artist/12832",
     ),
 )
 async def test_object_cache(sess: TidalSession, url):

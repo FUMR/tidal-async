@@ -3,19 +3,21 @@ import enum
 import json
 from abc import ABC, abstractmethod
 from functools import lru_cache
-from typing import TYPE_CHECKING, AsyncGenerator, Optional
+from typing import TYPE_CHECKING, AsyncGenerator, Optional, Tuple
 
 import music_service_async_interface as generic
 
 from tidal_async.exceptions import InsufficientAudioQuality
-from tidal_async.utils import cacheable, id_from_url, parse_title, snake_to_camel
+from tidal_async.utils import cacheable, gen_title, id_from_url, snake_to_camel
 
 if TYPE_CHECKING:
     from tidal_async import TidalSession
 
 
-# TODO [#1]: Artist object
-#   needs https://github.com/FUMR/music-service-async-interface/issues/5 to be resolved first
+# TODO: Fix caching of Objects when created with __init__
+
+# TODO: Generic iterator
+#   Now we have very similar code in Album.tracks, Playlist.tracks and Artist.albums
 
 
 class AudioQuality(generic.AudioQuality):
@@ -118,7 +120,7 @@ class Track(TidalObject, generic.Track):
 
     @property
     def artist_name(self) -> str:
-        return self.artist["name"]
+        return self.artist.name
 
     @property
     def album(self):
@@ -128,8 +130,15 @@ class Track(TidalObject, generic.Track):
     def cover(self):
         return self.album.cover
 
-    # TODO [#21]: Track.artist
-    #   Needs #1 to be resolved
+    @property
+    def artist(self):
+        return Artist(self.sess, self["artist"])
+
+    @property
+    async def artists(self) -> AsyncGenerator[Tuple["Artist", str], None]:
+        # TODO: Artist types enum
+        for artist in self["artists"]:
+            yield await Artist.from_id(self.sess, artist["id"]), artist["type"]
 
     @property
     def audio_quality(self):
@@ -173,24 +182,27 @@ class Track(TidalObject, generic.Track):
     async def get_metadata(self):
         # TODO [#22]: Rewrite Track.get_metadata
         #   - [ ] lyrics
-        #   - [ ] rewrite title parsing
-        #   - [ ] replayGain?
+        #   - [x] rewrite title parsing
+        #   - [x] replayGain
+        #   - [ ] multiple artists
         album = self.album
         await album.reload_info()
 
         tags = {
             # general metatags
             "artist": self.artist_name,
-            "title": parse_title(self, self.artists),
+            "title": gen_title(self, [x async for x in self.artists]),
             # album related metatags
-            "albumartist": album.artist["name"],
-            "album": parse_title(album),
-            "date": str(album.year),
+            "albumartist": album.artist.name,
+            "album": gen_title(album),
+            "date": album.release_date,
             # track/disc position metatags
-            "discnumber": str(self.volumeNumber),
-            "disctotal": str(album.numberOfVolumes),
-            "tracknumber": str(self.trackNumber),
-            "tracktotal": str(album.numberOfTracks),
+            "discnumber": self.volume_number,
+            "disctotal": album.number_of_volumes,
+            "tracknumber": self.track_number,
+            "tracktotal": album.number_of_tracks,
+            "replaygain_track_gain": self.replay_gain,
+            "replaygain_track_peak": self.peak,
         }
 
         # Tidal sometimes returns null for track copyright
@@ -262,12 +274,13 @@ class Playlist(TidalObject, generic.ObjectCollection[Track]):
 class Album(TidalObject, generic.ObjectCollection[Track]):
     urlname = "album"
 
-    # TODO [#24]: Album.artist
-    #   Needs #1 to be resolved
+    @property
+    def artist(self):
+        return Artist(self.sess, self["artist"])
 
     def __repr__(self):
         cls = self.__class__
-        return f"<{cls.__module__}.{cls.__qualname__} ({self.get_id()}): {self.artist['name']} - {self.title}>"
+        return f"<{cls.__module__}.{cls.__qualname__} ({self.get_id()}): {self.title}>"
 
     async def reload_info(self):
         resp = await self.sess.get(
@@ -304,3 +317,47 @@ class Album(TidalObject, generic.ObjectCollection[Track]):
             for track in data["items"]:
                 # python doesn't support `yield from` in async functions.. why?
                 yield Track(self.sess, track)
+
+
+class Artist(TidalObject, generic.ObjectCollection[Album]):
+    urlname = "artist"
+
+    def __repr__(self):
+        cls = self.__class__
+        return f"<{cls.__module__}.{cls.__qualname__} ({self.get_id()}): {self.name}>"
+
+    async def reload_info(self):
+        resp = await self.sess.get(
+            f"/v1/artists/{self.get_id()}",
+            params={
+                "countryCode": self.sess.country_code,
+            },
+        )
+
+        self.dict = await resp.json()
+
+    @property
+    def picture(self):
+        return Cover(self.sess, self["picture"])
+
+    async def albums(self, per_request_limit=10) -> AsyncGenerator[Album, None]:
+        offset = 0
+        total_items = 1
+
+        while offset < total_items:
+            resp = await self.sess.get(
+                f"/v1/artists/{self.get_id()}/albums",
+                params={
+                    "countryCode": self.sess.country_code,
+                    "offset": offset,
+                    "limit": per_request_limit,
+                },
+            )
+            data = await resp.json()
+
+            total_items = data["totalNumberOfItems"]
+            offset = data["offset"] + data["limit"]
+
+            for album in data["items"]:
+                # python doesn't support `yield from` in async functions.. why?
+                yield Album(self.sess, album)

@@ -7,7 +7,7 @@ from typing import Optional
 import aiohttp
 import music_service_async_interface as generic
 
-from tidal_async import Album, AudioQuality, Playlist, TidalObject, Track
+from tidal_async import Album, Artist, AudioQuality, Playlist, TidalObject, Track
 from tidal_async.exceptions import AuthorizationError, AuthorizationNeeded
 
 
@@ -153,6 +153,9 @@ class TidalSession(generic.Session):
 
     async def playlist(self, playlist_uuid):
         return await Playlist.from_id(self, playlist_uuid)
+
+    async def artist(self, artist_id):
+        return await Artist.from_id(self, artist_id)
 
     @staticmethod
     def is_valid_url(url: str) -> bool:
