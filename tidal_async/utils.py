@@ -63,19 +63,18 @@ def cacheable(f):
     return wrapped
 
 
-def parse_title(result, artists=None):
-    # https://github.com/divadsn/tidal-telegram-bot/blob/master/tidalbot/utils.py#L60
-    # TODO [#26]: Read parse_title carefully and rewrite
-    if artists and len(artists) > 1:
-        title = result.title.strip()  # just in case
+def gen_title(track, artists=()):
+    """Generates full title from track/album version and artist list"""
+    if len(artists) > 1:
+        title = track.title.strip()  # just in case
 
         # add featuring artists if not already
         if "(feat." not in title:
-            title += f' (feat. {" & ".join([x["name"] for x in artists[1:]])})'
+            title += f' (feat. {", ".join([a[0].name for a in artists if a[1] != "MAIN"])})'
 
-        return f'{title}{f" [{result.version}]" if result.version and result.version not in result.name else ""}'
+        return f'{title}{f" [{track.version}]" if track.version and track.version not in track.title else ""}'
     else:
-        return f'{result.title}{f" ({result.version})" if result.version and result.version not in result.name else ""}'
+        return f'{track.title}{f" ({track.version})" if track.version and track.version not in track.title else ""}'
 
 
 try:
