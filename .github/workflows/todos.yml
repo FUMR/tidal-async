@@ -12,9 +12,9 @@ jobs:
       - uses: actions/checkout@v1
       - uses: wvffle/todo-actions@master
         with:
-          collect_commit_msg: ci: collect new todos
-          reference_commit_msg: ci: add references to new todos
-          reference_commit_body: New issues: %s
+          collect_commit_msg: 'ci: collect new todos'
+          reference_commit_msg: 'ci: add references to new todos'
+          reference_commit_body: 'New issues: %s'
 
         env:
           GITHUB_TOKEN: ${{ secrets.ACTIONS_TOKEN }}
