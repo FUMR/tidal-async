@@ -8,7 +8,7 @@ from typing import TYPE_CHECKING, AsyncGenerator, Optional, Tuple
 import music_service_async_interface as generic
 
 from tidal_async.exceptions import InsufficientAudioQuality
-from tidal_async.utils import cacheable, gen_title, id_from_url, snake_to_camel
+from tidal_async.utils import cacheable, gen_artist, gen_title, id_from_url, snake_to_camel
 
 if TYPE_CHECKING:
     from tidal_async import TidalSession
@@ -134,7 +134,6 @@ class Track(TidalObject, generic.Track):
     def artist(self):
         return Artist(self.sess, self["artist"])
 
-    @property
     async def artists(self) -> AsyncGenerator[Tuple["Artist", str], None]:
         # TODO: Artist types enum
         for artist in self["artists"]:
@@ -190,11 +189,11 @@ class Track(TidalObject, generic.Track):
 
         tags = {
             # general metatags
-            "artist": self.artist_name,
-            "title": gen_title(self, [x async for x in self.artists]),
+            "artist": await gen_artist(self),
+            "title": await gen_title(self),
             # album related metatags
-            "albumartist": album.artist.name,
-            "album": gen_title(album),
+            "albumartist": await gen_artist(album),
+            "album": await gen_title(album),
             "date": album.release_date,
             # track/disc position metatags
             "discnumber": self.volume_number,
@@ -295,6 +294,11 @@ class Album(TidalObject, generic.ObjectCollection[Track]):
     @property
     def cover(self):
         return Cover(self.sess, self["cover"])
+
+    async def artists(self) -> AsyncGenerator[Tuple["Artist", str], None]:
+        # TODO: Artist types enum
+        for artist in self["artists"]:
+            yield await Artist.from_id(self.sess, artist["id"]), artist["type"]
 
     async def tracks(self, per_request_limit=50) -> AsyncGenerator[Track, None]:
         offset = 0
