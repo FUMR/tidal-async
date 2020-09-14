@@ -14,9 +14,9 @@ if TYPE_CHECKING:
     from tidal_async import TidalSession
 
 
-# TODO [$5f5d45327772070dc3721d3c]: Fix caching of Objects when created with __init__
+# TODO [#47]: Fix caching of Objects when created with __init__
 
-# TODO [$5f5d45327772070dc3721d3d]: Generic iterator
+# TODO [#48]: Generic iterator
 #   Now we have very similar code in Album.tracks, Playlist.tracks and Artist.albums
 
 
@@ -135,7 +135,7 @@ class Track(TidalObject, generic.Track):
         return Artist(self.sess, self["artist"])
 
     async def artists(self) -> AsyncGenerator[Tuple["Artist", str], None]:
-        # TODO [$5f5d45327772070dc3721d3e]: Artist types enum
+        # TODO [#49]: Artist types enum
         for artist in self["artists"]:
             yield await Artist.from_id(self.sess, artist["id"]), artist["type"]
 
@@ -296,7 +296,7 @@ class Album(TidalObject, generic.ObjectCollection[Track]):
         return Cover(self.sess, self["cover"])
 
     async def artists(self) -> AsyncGenerator[Tuple["Artist", str], None]:
-        # TODO [$5f5d45327772070dc3721d3f]: Artist types enum
+        # TODO [#50]: Artist types enum
         for artist in self["artists"]:
             yield await Artist.from_id(self.sess, artist["id"]), artist["type"]
 
