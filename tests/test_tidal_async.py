@@ -205,12 +205,22 @@ async def test_object_cache(sess: TidalSession, url):
         (
             "http://www.tidal.com/album/139475048",
             (320, 320),
-            "562e0276b28fb589f9f4efbc26cff4427fc2c4f9f9756ef2d459bbbbdf8d0051",
+            "d6fe27022ee874bb07527aac70b0ce34eab6f014d5d9e34b3803df074a79e5de",
+        ),
+        (
+            "http://www.tidal.com/track/82804684",
+            (1280, 1280),
+            None
         ),
     ),
 )
 async def test_cover_download(sess: TidalSession, object_url, cover_size, sha256sum):
     cover = (await sess.object_from_url(object_url)).cover
+
+    if sha256sum is None:
+        assert cover is None
+        return
+
     file = await cover.get_async_file(size=cover_size)
     async with file:
         assert hashlib.sha256(await file.read()).hexdigest() == sha256sum

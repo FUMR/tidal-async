@@ -246,7 +246,7 @@ class Playlist(TidalObject, generic.ObjectCollection[Track]):
     @property
     def cover(self):
         # NOTE: It may be also self['squareImage'], needs testing
-        return Cover(self.sess, self["image"])
+        return Cover(self.sess, self["image"]) if self["image"] is not None else None
 
     async def tracks(self, per_request_limit=50) -> AsyncGenerator[Track, None]:
         offset = 0
@@ -294,7 +294,7 @@ class Album(TidalObject, generic.ObjectCollection[Track]):
 
     @property
     def cover(self):
-        return Cover(self.sess, self["cover"])
+        return Cover(self.sess, self["cover"]) if self["cover"] is not None else None
 
     async def artists(self) -> AsyncGenerator[Tuple["Artist", str], None]:
         # TODO [#50]: Artist types enum
@@ -343,7 +343,7 @@ class Artist(TidalObject, generic.ObjectCollection[Album]):
 
     @property
     def picture(self):
-        return Cover(self.sess, self["picture"])
+        return Cover(self.sess, self["picture"]) if self["picture"] is not None else None
 
     async def albums(self, per_request_limit=10) -> AsyncGenerator[Album, None]:
         offset = 0
