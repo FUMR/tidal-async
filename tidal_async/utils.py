@@ -46,12 +46,16 @@ class Cacheable:
         self.lock = asyncio.Lock()
 
     def __await__(self):
-        with (yield from self.lock):
-            if self.done:
-                return self.result
-            self.result = yield from self.co.__await__()
-            self.done = True
+        yield from self.lock.acquire().__await__()
+
+        if self.done:
             return self.result
+        self.result = yield from self.co.__await__()
+        self.done = True
+
+        self.lock.release()
+
+        return self.result
 
 
 def cacheable(f):

@@ -184,6 +184,7 @@ class Track(TidalObject, generic.Track):
         #   - [x] rewrite title parsing
         #   - [x] replayGain
         #   - [ ] multiple artists
+        #   - [ ] Picard like artist and view artist separation
         album = self.album
         await album.reload_info()
 
