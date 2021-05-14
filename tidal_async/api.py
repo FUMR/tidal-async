@@ -6,6 +6,7 @@ from functools import lru_cache
 from typing import TYPE_CHECKING, AsyncGenerator, Optional, Tuple
 
 import music_service_async_interface as generic
+from aiohttp import ClientResponseError
 
 from tidal_async.exceptions import InsufficientAudioQuality
 from tidal_async.utils import cacheable, gen_artist, gen_title, id_from_url, snake_to_camel
@@ -104,9 +105,12 @@ class ArtistType(enum.Enum):
     artist = "ARTIST"
 
 
-# TODO [#3]: Downloading lyrics
 class Track(TidalObject, generic.Track):
     urlname = "track"
+
+    def __init__(self, sess: "TidalSession", dict_, id_field_name="id"):
+        super().__init__(sess, dict_, id_field_name)
+        self._lyrics_dict = None
 
     def __repr__(self):
         cls = self.__class__
@@ -183,6 +187,45 @@ class Track(TidalObject, generic.Track):
             raise InsufficientAudioQuality(f"Got {quality} for {self}, required audio quality is {required_quality}")
 
         return manifest["urls"][0]
+
+    async def _lyrics(self) -> Optional[dict]:
+        if self._lyrics_dict is not None:
+            return self._lyrics_dict
+
+        try:
+            resp = await self.sess.get(
+                f"/v1/tracks/{self.get_id()}/lyrics", params={"countryCode": self.sess.country_code}
+            )
+        except ClientResponseError as e:
+            if e.status == 404:
+                return None
+            else:
+                raise
+
+        self._lyrics_dict = await resp.json()
+        return self._lyrics_dict
+
+    async def lyrics(self) -> Optional[str]:
+        """Gets lyrics for track
+
+        :return: Lyrics string when available, `None` when not
+        """
+        lyrics_dict = await self._lyrics()
+        if lyrics_dict is None or "lyrics" not in lyrics_dict:
+            return None
+
+        return lyrics_dict["lyrics"]
+
+    async def subtitles(self) -> Optional[str]:
+        """Gets subtitles (time-synchronized lyrics) for track
+
+        :return: Subtitles string in LRC format when available, `None` when not
+        """
+        lyrics_dict = await self._lyrics()
+        if lyrics_dict is None or "subtitles" not in lyrics_dict:
+            return None
+
+        return lyrics_dict["subtitles"]
 
     async def get_metadata(self):
         # TODO [#22]: Rewrite Track.get_metadata

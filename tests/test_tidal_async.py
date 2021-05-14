@@ -11,7 +11,7 @@ from tidal_async import Album, Artist, AudioQuality, Playlist, TidalSession, Tra
 #   - [ ] Track
 #       - [x] loading track info
 #       - [x] downloading tracks
-#       - [ ] track lyrics (no lyrics support atm)
+#       - [x] track lyrics
 #       - [ ] track metadata generation
 #   - [x] loading album info
 #       - [x] listing tracks from albums
@@ -60,6 +60,38 @@ async def sess():
 async def test_track_title(sess: TidalSession, id_, artist, title):
     track = await sess.track(id_)
     assert track.title == title and track.artist_name == artist
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize(
+    "id_, lyrics_len",
+    (
+        (22563745, None),
+        (22563746, 3079),
+    ),
+)
+async def test_track_lyrics(sess: TidalSession, id_, lyrics_len):
+    track = await sess.track(id_)
+    if lyrics_len is None:
+        assert await track.lyrics() is None
+    else:
+        assert len(await track.lyrics()) == lyrics_len
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize(
+    "id_, subtitles_len",
+    (
+        (22563745, None),
+        (22563746, 4193),
+    ),
+)
+async def test_track_subtitles(sess: TidalSession, id_, subtitles_len):
+    track = await sess.track(id_)
+    if subtitles_len is None:
+        assert await track.subtitles() is None
+    else:
+        assert len(await track.subtitles()) == subtitles_len
 
 
 @pytest.mark.asyncio
