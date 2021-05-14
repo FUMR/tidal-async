@@ -228,12 +228,6 @@ class Track(TidalObject, generic.Track):
         return lyrics_dict["subtitles"]
 
     async def get_metadata(self):
-        # TODO [#22]: Rewrite Track.get_metadata
-        #   - [ ] lyrics
-        #   - [x] rewrite title parsing
-        #   - [x] replayGain
-        #   - [x] multiple artists
-        #   - [x] Tidal track URL
         album = self.album
         await album.reload_info()
 
@@ -270,6 +264,17 @@ class Track(TidalObject, generic.Track):
             tags["isrc"] = self.isrc
         if "upc" in album and album.upc:
             tags["barcode"] = album.upc
+
+        lyrics = await self.lyrics()
+        if lyrics:
+            tags["lyrics"] = lyrics
+
+        subtitles = await self.subtitles()
+        if subtitles:
+            # TODO: Support for subtitles tag
+            #   prelimitary invalid support for subtitles tag
+            #   depends on beetbox/mediafile#48
+            tags["subtitles"] = subtitles
 
         return tags
 
