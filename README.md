@@ -10,7 +10,7 @@
 # Install all dependencies
 poetry install
 
-# Install linters (Unlinted PRs won't be approved)
+# Install linters and checks (Unlinted PRs won't be approved)
 poetry run pre-commit install
 
 # Install commit-msg linters (PRs with wrong commit names will be squashed)
