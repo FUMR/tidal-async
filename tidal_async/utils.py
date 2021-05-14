@@ -73,23 +73,19 @@ def cacheable(f):
     return wrapped
 
 
-async def gen_title(obj):
-    """Generates full title from track/album version and artist list"""
-    artists = [a async for a in obj.artists() if a[1] != "MAIN"]
+def gen_title(obj):
+    """Generates full title from track/album version"""
     title = obj.title.strip()
     version = obj.version.strip() if "version" in obj and obj.version else ""
-
-    if not artists:
-        return f"{title} ({version})" if version and version not in title else title
-
-    if "feat" not in title:
-        title += f' (feat. {", ".join([a[0].name for a in artists])})'
 
     return f"{title} ({version})" if version and version not in title else title
 
 
 async def gen_artist(obj):
-    return ", ".join([a[0].name async for a in obj.artists() if a[1] == "MAIN"])
+    artists = [a async for a in obj.artists()]
+    main = ", ".join(a[0].name for a in artists if a[1].value == "MAIN")
+    feat = ", ".join(a[0].name for a in artists if a[1].value == "FEATURED")
+    return main if not feat else f"{main} feat. {feat}"
 
 
 try:

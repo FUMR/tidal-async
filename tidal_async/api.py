@@ -189,26 +189,31 @@ class Track(TidalObject, generic.Track):
         #   - [ ] lyrics
         #   - [x] rewrite title parsing
         #   - [x] replayGain
-        #   - [ ] multiple artists
-        #   - [ ] Picard like artist and view artist separation
+        #   - [x] multiple artists
+        #   - [x] Tidal track URL
         album = self.album
         await album.reload_info()
 
         tags = {
             # general metatags
             "artist": await gen_artist(self),
-            "title": await gen_title(self),
+            "artists": [a[0].name async for a in self.artists()],
+            "title": gen_title(self),
             # album related metatags
             "albumartist": await gen_artist(album),
-            "album": await gen_title(album),
+            "albumartists": [a[0].name async for a in album.artists()],
+            "album": gen_title(album),
             "date": album.release_date,
             # track/disc position metatags
-            "discnumber": self.volume_number,
+            "disc": self.volume_number,
             "disctotal": album.number_of_volumes,
-            "tracknumber": self.track_number,
+            "track": self.track_number,
             "tracktotal": album.number_of_tracks,
-            "replaygain_track_gain": self.replay_gain,
-            "replaygain_track_peak": self.peak,
+            # replaygain
+            "rg_track_gain": self.replay_gain,
+            "rg_track_peak": self.peak,
+            # track url
+            "url": await self.get_url(),
         }
 
         # Tidal sometimes returns null for track copyright
@@ -217,11 +222,11 @@ class Track(TidalObject, generic.Track):
         elif "copyright" in album and album.copyright:
             tags["copyright"] = album.copyright
 
-        # identifiers for later use in own music libraries
+        # identifiers for later use in music libraries
         if "isrc" in self and self.isrc:
             tags["isrc"] = self.isrc
         if "upc" in album and album.upc:
-            tags["upc"] = album.upc
+            tags["barcode"] = album.upc
 
         return tags
 
