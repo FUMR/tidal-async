@@ -207,11 +207,7 @@ async def test_object_cache(sess: TidalSession, url):
             (320, 320),
             "d6fe27022ee874bb07527aac70b0ce34eab6f014d5d9e34b3803df074a79e5de",
         ),
-        (
-            "http://www.tidal.com/track/82804684",
-            (1280, 1280),
-            None
-        ),
+        ("http://www.tidal.com/track/82804684", (1280, 1280), None),
     ),
 )
 async def test_cover_download(sess: TidalSession, object_url, cover_size, sha256sum):
@@ -236,24 +232,25 @@ async def test_cover_download(sess: TidalSession, object_url, cover_size, sha256
             AudioQuality.Normal,
             3114802,
             "audio/mp4",
-            '"1751009e4a30270dda182b034757e195"',
+            '"780130927f84364021b1300423d60f47"',
         ),
-        (
-            152676390,
-            AudioQuality.High,
-            AudioQuality.High,
-            10347474,
-            "audio/mp4",
-            '"970df936b04363528662c9c74b714d13-2"',
-        ),
-        (152676390, AudioQuality.HiFi, AudioQuality.HiFi, 30980403, "audio/flac", '"3bb27f3e6d8f7fd987bcc0d3cdc7c452"'),
+        # DASH Support needed (#53)
+        # (
+        #    152676390,
+        #    AudioQuality.High,
+        #    AudioQuality.High,
+        #    10347474,
+        #    "audio/mp4",
+        #    '"970df936b04363528662c9c74b714d13-2"',
+        # ),
+        (152676390, AudioQuality.HiFi, AudioQuality.HiFi, 30980344, "audio/flac", '"3bb27f3e6d8f7fd987bcc0d3cdc7c452"'),
         (
             152676390,
             AudioQuality.Master,
             AudioQuality.Master,
-            57347695,
+            57347594,
             "audio/flac",
-            '"3ed31735943386e6effb814dba8e77b6-7"',
+            '"5e26dad761f202b59af8ac9962e7ccb7-7"',
         ),
     ),
 )
