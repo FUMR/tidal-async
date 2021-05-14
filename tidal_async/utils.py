@@ -1,4 +1,5 @@
 import asyncio
+import contextlib
 from urllib.parse import urlparse
 
 from music_service_async_interface import InvalidURL
@@ -37,7 +38,13 @@ async def cli_auth_url_getter(authorization_url):
     return input("Enter auth_url: ")
 
 
-class Cacheable:
+@contextlib.contextmanager
+def lock_context_manager(lock):
+    yield lock.acquire().__await__()
+    lock.release()
+
+
+class AsyncCacheable:
     # NOTE: Used snipped from https://stackoverflow.com/a/46723144
     def __init__(self, co):
         self.co = co
@@ -46,14 +53,13 @@ class Cacheable:
         self.lock = asyncio.Lock()
 
     def __await__(self):
-        yield from self.lock.acquire().__await__()
+        with lock_context_manager(self.lock) as t:
+            yield from t
 
-        if self.done:
-            return self.result
-        self.result = yield from self.co.__await__()
-        self.done = True
-
-        self.lock.release()
+            if self.done:
+                return self.result
+            self.result = yield from self.co.__await__()
+            self.done = True
 
         return self.result
 
@@ -62,7 +68,7 @@ def cacheable(f):
     # NOTE: Used snipped from https://stackoverflow.com/a/46723144
     def wrapped(*args, **kwargs):
         r = f(*args, **kwargs)
-        return Cacheable(r)
+        return AsyncCacheable(r)
 
     return wrapped
 
