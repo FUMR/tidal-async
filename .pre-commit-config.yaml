@@ -21,10 +21,10 @@ repos:
   hooks:
     - id: mypy
       exclude: ^docs/conf.py
-- repo: https://github.com/terrencepreilly/darglint
-  rev: v1.5.3
-  hooks:
-    - id: darglint
+#- repo: https://github.com/terrencepreilly/darglint
+#  rev: v1.5.3
+#  hooks:
+#    - id: darglint
 - repo: https://github.com/commitizen-tools/commitizen
   rev: v2.3.0
   hooks:
