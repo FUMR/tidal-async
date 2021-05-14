@@ -97,6 +97,13 @@ class TidalObject(generic.Object, ABC):
         return self[attr]
 
 
+class ArtistType(enum.Enum):
+    main = "MAIN"
+    featured = "FEATURED"
+    contributor = "CONTRIBUTOR"
+    artist = "ARTIST"
+
+
 # TODO [#3]: Downloading lyrics
 class Track(TidalObject, generic.Track):
     urlname = "track"
@@ -134,10 +141,9 @@ class Track(TidalObject, generic.Track):
     def artist(self):
         return Artist(self.sess, self["artist"])
 
-    async def artists(self) -> AsyncGenerator[Tuple["Artist", str], None]:
-        # TODO [#49]: Artist types enum
+    async def artists(self) -> AsyncGenerator[Tuple["Artist", ArtistType], None]:
         for artist in self["artists"]:
-            yield await Artist.from_id(self.sess, artist["id"]), artist["type"]
+            yield await Artist.from_id(self.sess, artist["id"]), ArtistType(artist["type"])
 
     @property
     def audio_quality(self):
@@ -296,10 +302,9 @@ class Album(TidalObject, generic.ObjectCollection[Track]):
     def cover(self):
         return Cover(self.sess, self["cover"]) if self["cover"] is not None else None
 
-    async def artists(self) -> AsyncGenerator[Tuple["Artist", str], None]:
-        # TODO [#50]: Artist types enum
+    async def artists(self) -> AsyncGenerator[Tuple["Artist", ArtistType], None]:
         for artist in self["artists"]:
-            yield await Artist.from_id(self.sess, artist["id"]), artist["type"]
+            yield await Artist.from_id(self.sess, artist["id"]), ArtistType(artist["type"])
 
     async def tracks(self, per_request_limit=50) -> AsyncGenerator[Track, None]:
         offset = 0
