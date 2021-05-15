@@ -5,7 +5,11 @@ from urllib.parse import urlparse
 from music_service_async_interface import InvalidURL
 
 
-def snake_to_camel(attr):
+def snake_to_camel(attr: str) -> str:
+    """
+    :param attr: snake case string
+    :return: camel case string
+    """
     return "".join(c if i == 0 else c.capitalize() for i, c in enumerate(attr.split("_")))
 
 
@@ -25,8 +29,7 @@ def id_from_url(url, urlname):
     return path.split(id_prefix, 1)[1].split("/", 1)[0]
 
 
-async def cli_auth_url_getter(authorization_url):
-    # raise NotImplemented
+async def cli_auth_url_getter(authorization_url: str) -> str:
     # Test (bad) implementation, it's blocking and should be overwritten in code using this API
     print("Authorization prompt URL:", authorization_url)
     print(
@@ -45,7 +48,7 @@ def lock_context_manager(lock):
 
 
 class AsyncCacheable:
-    # NOTE: Used snipped from https://stackoverflow.com/a/46723144
+    # NOTE: Used snippet from https://stackoverflow.com/a/46723144
     def __init__(self, co):
         self.co = co
         self.done = False
@@ -65,7 +68,7 @@ class AsyncCacheable:
 
 
 def cacheable(f):
-    # NOTE: Used snipped from https://stackoverflow.com/a/46723144
+    # NOTE: Used snippet from https://stackoverflow.com/a/46723144
     def wrapped(*args, **kwargs):
         r = f(*args, **kwargs)
         return AsyncCacheable(r)
@@ -73,15 +76,29 @@ def cacheable(f):
     return wrapped
 
 
-def gen_title(obj):
-    """Generates full title from track/album version"""
+def gen_title(obj) -> str:
+    """Generates full title from track/album version
+
+    :param obj: object with `version` and `title` attributes
+    :return: title including version
+    eg. Some track (REMIX)
+    """
     title = obj.title.strip()
     version = obj.version.strip() if "version" in obj and obj.version else ""
 
     return f"{title} ({version})" if version and version not in title else title
 
 
-async def gen_artist(obj):
+async def gen_artist(obj) -> str:
+    """Generates artist string from track/album
+
+    :param obj: object with `artists` function being Async Generator of `(`:class:`Artist``, `:class:`ArtistType``)`
+    eg. Track or Album
+    :return: string with artists with their roles
+    eg.
+    `Main, Artists`
+    `Main, Artists feat. With, Featuring`
+    """
     artists = [a async for a in obj.artists()]
     main = ", ".join(a[0].name for a in artists if a[1].value == "MAIN")
     feat = ", ".join(a[0].name for a in artists if a[1].value == "FEATURED")
