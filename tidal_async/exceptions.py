@@ -1,11 +1,11 @@
 from music_service_async_interface import InsufficientAudioQuality
 
 
-class AuthorizationNeeded(Exception):
+class AuthenticationNeeded(Exception):
     pass
 
 
-class AuthorizationError(Exception):
+class AuthenticationError(Exception):
     pass
 
 

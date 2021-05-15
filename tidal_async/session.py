@@ -9,7 +9,7 @@ import aiohttp.typedefs
 import music_service_async_interface as generic
 
 from tidal_async import Album, Artist, AudioQuality, Playlist, TidalObject, Track
-from tidal_async.exceptions import AuthorizationError, AuthorizationNeeded
+from tidal_async.exceptions import AuthenticationError, AuthenticationNeeded
 
 
 class TidalSession(generic.Session):
@@ -36,13 +36,13 @@ class TidalSession(generic.Session):
     @property
     def _access_token(self):
         if self._auth_info is None:
-            raise AuthorizationNeeded
+            raise AuthenticationNeeded
         return self._auth_info["access_token"]
 
     @property
     def _token_type(self):
         if self._auth_info is None:
-            raise AuthorizationNeeded
+            raise AuthenticationNeeded
         return self._auth_info["token_type"]
 
     @property
@@ -52,22 +52,22 @@ class TidalSession(generic.Session):
         It specifies which region-locked content is available to account.
 
         :return: Tidal account's country code
-        :raises AuthorizationNeeded: when used on unauthorized (not logged in) session
+        :raises AuthenticationNeeded: when used on unauthorized (not logged in) session
         """
         if self._auth_info is None:
-            raise AuthorizationNeeded
+            raise AuthenticationNeeded
         return self._auth_info["user"]["countryCode"]
 
     async def login(self, interactive_auth_url_getter: Callable[[str], Awaitable[str]], force_relogin=False) -> None:
         """Log the session into Tidal
 
         :param interactive_auth_url_getter: awaitable callable (eg. async function) for handling interactive auth
-        It get's one argument (`authorization_url`) which is URL that needs to be opened by user.
+        It gets one argument (`authorization_url`) which is URL that needs to be opened by user.
         User needs to authenticate on page and provide resulting URL to the function.
-        Function needs to return this URL to complete the authorization.
+        Function needs to return this URL to complete the authentication.
         Example is `cli_auth_url_getter` from `tidal_api.utils`.
         :param force_relogin: when True forces relogin even if already logged in
-        :raises AuthorizationError: when authorization failed
+        :raises AuthenticationError: when authorization failed
         """
         if self._auth_info is not None and not force_relogin:
             return
@@ -107,7 +107,7 @@ class TidalSession(generic.Session):
         ) as resp:
             data = await resp.json()
             if resp.status != 200:
-                raise AuthorizationError(data["error"], data["error_description"])
+                raise AuthenticationError(data["error"], data["error_description"])
             self._auth_info = data
             self._refresh_token = data["refresh_token"]
 
@@ -122,15 +122,16 @@ class TidalSession(generic.Session):
     ) -> aiohttp.ClientResponse:
         """Asynchroniously sends arbitary request to Tidal's API endpoint
 
-        :param method: HTTP method to use.
+        :param method: HTTP method to use
         eg. GET, POST, HEAD
-        :param url: part of URL to to be joined with API base URL and requested
+        :param url: URL to be requested from Tidal server
+        It will be joined with API base URL.
         eg. request to `url='topkek'` becomes `'https://api.tidal.com/topkek'`
-        :param auth: when True auth data is being added to request
-        :param headers: dict containing headers to be added to request
-        :param autorefresh: when True and request fails because of expired token session is refreshed and request retried
+        :param auth: when True, auth data should be added to the request
+        :param headers: dict containing headers to be added to the request
+        :param autorefresh: when True and request fails because of expired token, session is refreshed and request retried
         :param kwargs: additional arguments to `aiohttp`
-        :raises aiohttp.ClientResponseError: when HTTP error happened (status != 200)
+        :raises aiohttp.ClientResponseError: when HTTP error happened
         :return: HTTP response from server
         """
 
@@ -156,10 +157,10 @@ class TidalSession(generic.Session):
     async def get(self, url: aiohttp.typedefs.StrOrURL, **kwargs) -> aiohttp.ClientResponse:
         """Asynchroniously sends arbitary HTTP GET request to Tidal's API endpoint
 
-        :param url: part of URL to to be joined with API base URL and requested
+        :param url: part of URL to be joined with API base URL and requested
         eg. request to `url='topkek'` becomes `'https://api.tidal.com/topkek'`
         :param kwargs: additional arguments to `request` method or `aiohttp`
-        :raises aiohttp.ClientResponseError: when HTTP error happened (status != 200)
+        :raises aiohttp.ClientResponseError: when HTTP error happened
         :return: HTTP response from server
         """
         return await self.request("GET", url, **kwargs)
@@ -167,10 +168,10 @@ class TidalSession(generic.Session):
     async def post(self, url: aiohttp.typedefs.StrOrURL, **kwargs) -> aiohttp.ClientResponse:
         """Asynchroniously sends arbitary HTTP POST request to Tidal's API endpoint
 
-        :param url: part of URL to to be joined with API base URL and requested
+        :param url: part of URL to be joined with API base URL and requested
         eg. request to `url='topkek'` becomes `'https://api.tidal.com/topkek'`
         :param kwargs: additional arguments to `request` method or `aiohttp`
-        :raises aiohttp.ClientResponseError: when HTTP error happened (status != 200)
+        :raises aiohttp.ClientResponseError: when HTTP error happened
         :return: HTTP response from server
         """
         return await self.request("POST", url, **kwargs)
@@ -183,11 +184,11 @@ class TidalSession(generic.Session):
     async def refresh_session(self) -> None:
         """Refreshes tokens stored in :class:`TidalSession` using `refresh_token`
 
-        :raises AuthorizationNeeded: when used on unauthorized (not logged in) session
-        :raises AuthorizationError: when authorization failed
+        :raises AuthenticationNeeded: when used on unauthorized (not logged in) session
+        :raises AuthenticationError: when authorization failed
         """
         if self._refresh_token is None:
-            raise AuthorizationNeeded
+            raise AuthenticationNeeded
         async with self.sess.post(
             self._oauth_token_url,
             data={
@@ -199,11 +200,11 @@ class TidalSession(generic.Session):
         ) as resp:
             data = await resp.json()
             if resp.status != 200:
-                raise AuthorizationError(data["error"], data["error_description"])
+                raise AuthenticationError(data["error"], data["error_description"])
             self._auth_info = data
 
     async def close(self):
-        """Closes session.
+        """Closes session
         Should be called when session is not gonna be used anymore.
         Does underlying cleanup.
         """
@@ -282,7 +283,7 @@ class TidalSession(generic.Session):
 
 
 class TidalMultiSession(TidalSession):
-    """Class providing unified :class:`TidalSession` based interface consisting of multiple sessions.
+    """Class providing unified :class:`TidalSession` based interface consisting of multiple sessions
     It helps with overcoming region lock and rate limits using multiple Tidal accounts and possibly separate proxies.
     """
 
@@ -301,12 +302,12 @@ class TidalMultiSession(TidalSession):
         """Add existing :class:`TidalSession` to list of sessions
 
         :param sess: authorized :class:`TidalSession`
-        :raises AuthorizationNeeded: if supplied session is not authorized
+        :raises AuthenticationNeeded: if supplied session is not authenticated
         """
         assert isinstance(sess, TidalSession)
 
         if sess._auth_info is None:
-            raise AuthorizationNeeded("tried to add unauthenticated Tidal session to multi-session object")
+            raise AuthenticationNeeded("tried to add unauthenticated Tidal session to multi-session object")
 
         self.sessions.append(sess)
 
@@ -329,7 +330,7 @@ class TidalMultiSession(TidalSession):
         Can be extracted from Android app (.apk file) using `extract_client_id` from `tidal_async.utils`.
         When not provided, client_id from :class:`TidalMultiSession` will be used.
         :param sess: optional preconfigured :class:`aiohttp.ClientSession` to be used with this :class:`TidalSession`
-        :raises AuthorizationError: when authorization failed
+        :raises AuthenticationError: when authentication failed
         """
         if not client_id:
             client_id = self.client_id
@@ -340,7 +341,8 @@ class TidalMultiSession(TidalSession):
         self.sessions.append(tsess)
 
     async def logout(self, sess: Optional[TidalSession] = None) -> None:
-        """Logs out and removes from sessions list `sess` session or all sessions
+        """Logs out and removes `sess` from sessions list session
+        When no `sess` specified all sessions are logged out and removed.
 
         :param sess: :class:`TidalSession` to logout and remove
         """
@@ -356,7 +358,7 @@ class TidalMultiSession(TidalSession):
                 self.sessions.remove(sess)
 
     async def close(self):
-        """Closes all sessions.
+        """Closes all sessions
         Should be called when session is not gonna be used anymore.
         Does underlying cleanup.
         """
