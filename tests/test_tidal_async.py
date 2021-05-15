@@ -1,5 +1,6 @@
 import hashlib
 import os
+from typing import Optional, Sized
 
 import pytest
 
@@ -72,10 +73,11 @@ async def test_track_title(sess: TidalSession, id_, artist, title):
 )
 async def test_track_lyrics(sess: TidalSession, id_, lyrics_len):
     track = await sess.track(id_)
-    if lyrics_len is None:
-        assert await track.lyrics() is None
+    lyrics = await track.lyrics()
+    if lyrics is None:
+        assert lyrics_len == lyrics
     else:
-        assert len(await track.lyrics()) == lyrics_len
+        assert len(lyrics) == lyrics_len
 
 
 @pytest.mark.asyncio
@@ -88,10 +90,11 @@ async def test_track_lyrics(sess: TidalSession, id_, lyrics_len):
 )
 async def test_track_subtitles(sess: TidalSession, id_, subtitles_len):
     track = await sess.track(id_)
-    if subtitles_len is None:
-        assert await track.subtitles() is None
+    subtitles = await track.subtitles()
+    if subtitles is None:
+        assert subtitles_len == subtitles
     else:
-        assert len(await track.subtitles()) == subtitles_len
+        assert len(subtitles) == subtitles_len
 
 
 @pytest.mark.asyncio
