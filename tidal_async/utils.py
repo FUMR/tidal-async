@@ -94,7 +94,7 @@ async def gen_artist(obj) -> str:
 
     :param obj: object with `artists` function being Async Generator of `(`:class:`Artist``, `:class:`ArtistType``)`
     eg. Track or Album
-    :return: string with artists with their roles
+    :return: string of artists with their roles
     eg.
     `Main, Artists`
     `Main, Artists feat. With, Featuring`

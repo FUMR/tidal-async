@@ -94,7 +94,7 @@ class TidalObject(generic.Object, ABC):
         :param sess: :class:`TidalSession` instance to use when loading data from Tidal
         :param id_: Tidal ID of object
         :param id_field_name: object JSON id field name (eg. `"id"` for :class:`Track`, `"uuid"` for :class:`Playlist`)
-        :raises NotImplementedError: when particular object can't be got by ID
+        :raises NotImplementedError: when particular object can't be fetched by ID
         :return: corresponding object, eg. :class:`Track` or :class:`Playlist`
         """
         if cls is TidalObject:
@@ -125,7 +125,7 @@ class TidalObject(generic.Object, ABC):
 
         :param sess: :class:`TidalSession` instance to use when loading data from Tidal
         :param url: Tidal URL to corresponding object
-        :raises NotImplementedError: when particular object type can't be got by URL
+        :raises NotImplementedError: when particular object type can't be fetched by URL
         :return: corresponding object, eg. :class:`Track` or :class:`Playlist`
         """
         if cls is TidalObject:
@@ -227,7 +227,7 @@ class Track(TidalObject, generic.Track):
         return Artist(self.sess, self["artist"])
 
     async def artists(self) -> AsyncGenerator[Tuple["Artist", ArtistType], None]:
-        """Generates async interable of :class:`Artist`s of :class:`Track` with their corresponding role in track
+        """Generates async interable of :class:`Artist`s of the :class:`Track` with their corresponding role
 
         example:
         >>> track = await sess.track(182424124)
@@ -280,7 +280,7 @@ class Track(TidalObject, generic.Track):
         if ommited value from session is used
         :param kwargs: not used
         :raises InsufficientAudioQuality: when available :class:`AudioQuality` is lower than `required_quality`
-        :return: music file direct URL
+        :return: direct URL of music file
         """
         if preferred_quality is None:
             preferred_quality = self.sess.preferred_audio_quality
@@ -431,7 +431,7 @@ class Playlist(TidalObject, generic.ObjectCollection[Track]):
 
         :param sess: :class:`TidalSession` instance to use when loading data from Tidal
         :param id_: Tidal ID of :class:`Playlist`
-        :param id_field_name: object JSON id field name (eg. `"uuid"` for :class:`Playlist`)
+        :param id_field_name: name of the ID field from the object returned by Tidal API (`uuid` for :class:`Playlist`)
         :return: :class:`Playlist` corresponding to Tidal ID
         """
         playlist = await super().from_id(sess, id_, id_field_name)
@@ -447,7 +447,7 @@ class Playlist(TidalObject, generic.ObjectCollection[Track]):
         return Cover(self.sess, self["image"]) if self["image"] is not None else None
 
     async def tracks(self, per_request_limit: int = 50) -> AsyncGenerator[Track, None]:
-        """Generates async interable of :class:`Tracks`s in :class:`Playlist`
+        """Generates async interable of :class:`Track`s in the :class:`Playlist`
 
         example:
         >>> playlist = await sess.playlist("dcbab999-7523-4e2f-adf4-57d10fc17516")
@@ -459,7 +459,7 @@ class Playlist(TidalObject, generic.ObjectCollection[Track]):
          ...]
 
         :param per_request_limit: max amount of :class:`Track`s to load in one request
-        :yield: :class:`Track`s from :class:`Playlist`
+        :yield: :class:`Track`s in the :class:`Playlist`
         """
         offset = 0
         total_items = 1
@@ -516,7 +516,7 @@ class Album(TidalObject, generic.ObjectCollection[Track]):
         return Cover(self.sess, self["cover"]) if self["cover"] is not None else None
 
     async def artists(self) -> AsyncGenerator[Tuple["Artist", ArtistType], None]:
-        """Generates async interable of :class:`Artist`s of :class:`Album` with their corresponding role in album
+        """Generates async interable of :class:`Artist`s of the :class:`Album` with their corresponding role
 
         example:
         >>> album = await sess.album(180429444)
@@ -530,7 +530,7 @@ class Album(TidalObject, generic.ObjectCollection[Track]):
             yield await Artist.from_id(self.sess, artist["id"]), ArtistType(artist["type"])
 
     async def tracks(self, per_request_limit: int = 50) -> AsyncGenerator[Track, None]:
-        """Generates async interable of :class:`Tracks`s in :class:`Album`
+        """Generates async interable of :class:`Tracks`s in the :class:`Album`
 
         example:
         >>> album = await sess.album(180429444)
@@ -538,7 +538,7 @@ class Album(TidalObject, generic.ObjectCollection[Track]):
         [<tidal_async.api.Track (180429445): donGURALesko - Bangladesz>]
 
         :param per_request_limit: max amount of :class:`Track`s to load in one request
-        :yield: :class:`Track`s from :class:`Playlist`
+        :yield: :class:`Track`s from :class:`Album`
         """
         offset = 0
         total_items = 1
@@ -588,7 +588,7 @@ class Artist(TidalObject, generic.ObjectCollection[Album]):
         return Cover(self.sess, self["picture"]) if self["picture"] is not None else None
 
     async def albums(self, per_request_limit: int = 10) -> AsyncGenerator[Album, None]:
-        """Generates async interable of :class:`Album`s created by :class:`Artist`
+        """Generates async interable of :class:`Album`s created by the :class:`Artist`
 
         example:
         >>> artist = await sess.artist(4609597)
@@ -608,8 +608,8 @@ class Artist(TidalObject, generic.ObjectCollection[Album]):
          <tidal_async.api.Album (170231451): Totem Leśnych Ludzi>,
          <tidal_async.api.Album (170231995): EL POLAKO>]
 
-        :param per_request_limit: max amount of :class:`Artist`s to load in one request
-        :yield: :class:`Album`s created by :class:`Artist`
+        :param per_request_limit: max amount of :class:`Album`s to load in one request
+        :yield: :class:`Album`s created by the :class:`Artist`
         """
         offset = 0
         total_items = 1
