@@ -88,6 +88,10 @@ async def gen_artist(obj):
     return main if not feat else f"{main} feat. {feat}"
 
 
+async def artists_names(obj):
+    return [a[0].name async for a in obj.artists()]
+
+
 try:
     from zipfile import ZipFile
 

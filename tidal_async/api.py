@@ -1,3 +1,4 @@
+import asyncio
 import base64
 import enum
 import json
@@ -9,7 +10,7 @@ import music_service_async_interface as generic
 from aiohttp import ClientResponseError
 
 from tidal_async.exceptions import InsufficientAudioQuality
-from tidal_async.utils import cacheable, gen_artist, gen_title, id_from_url, snake_to_camel
+from tidal_async.utils import artists_names, cacheable, gen_artist, gen_title, id_from_url, snake_to_camel
 
 if TYPE_CHECKING:
     from tidal_async import TidalSession
@@ -124,6 +125,7 @@ class Track(TidalObject, generic.Track):
             },
         )
         self.dict = await resp.json()
+        self._lyrics_dict = None
 
     @property
     def title(self) -> str:
@@ -231,14 +233,23 @@ class Track(TidalObject, generic.Track):
         album = self.album
         await album.reload_info()
 
+        [artist, artists, albumartist, albumartists, url, lyrics] = await asyncio.gather(
+            gen_artist(self),
+            artists_names(self),
+            gen_artist(album),
+            artists_names(album),
+            self.get_url(),
+            self.lyrics(),
+        )
+
         tags = {
             # general metatags
-            "artist": await gen_artist(self),
-            "artists": [a[0].name async for a in self.artists()],
+            "artist": artist,
+            "artists": artists,
             "title": gen_title(self),
             # album related metatags
-            "albumartist": await gen_artist(album),
-            "albumartists": [a[0].name async for a in album.artists()],
+            "albumartist": albumartist,
+            "albumartists": albumartists,
             "album": gen_title(album),
             "date": album.release_date,
             # track/disc position metatags
@@ -250,7 +261,7 @@ class Track(TidalObject, generic.Track):
             "rg_track_gain": self.replay_gain,
             "rg_track_peak": self.peak,
             # track url
-            "url": await self.get_url(),
+            "url": url,
         }
 
         # Tidal sometimes returns null for track copyright
@@ -265,10 +276,10 @@ class Track(TidalObject, generic.Track):
         if "upc" in album and album.upc:
             tags["barcode"] = album.upc
 
-        lyrics = await self.lyrics()
         if lyrics:
             tags["lyrics"] = lyrics
 
+        # uses cached lyrics data
         subtitles = await self.subtitles()
         if subtitles:
             # TODO: Support for subtitles tag
