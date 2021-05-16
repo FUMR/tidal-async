@@ -31,7 +31,7 @@ class AudioQuality(generic.AudioQuality):
 
 
 class AudioMode(enum.Enum):
-    # TODO [$60a138824dfa650759734b88]: Find more audio modes
+    # TODO [#66]: Find more audio modes
     #   Until we can fill whole `Enum` it will still be used as a string.
     Stereo = "STEREO"
 
