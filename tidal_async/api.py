@@ -19,7 +19,8 @@ if TYPE_CHECKING:
 # TODO [#47]: Fix caching of Objects when created with __init__
 
 # TODO [#48]: Generic iterator
-#   Now we have very similar code in Album.tracks, Playlist.tracks and Artist.albums
+#   Now we have very similar code in Album.tracks, Playlist.tracks and Artist.albums.
+#   It would be cool to merge this to generic function and just pass some params, to deduplicate code
 
 
 class AudioQuality(generic.AudioQuality):
@@ -30,8 +31,8 @@ class AudioQuality(generic.AudioQuality):
 
 
 class AudioMode(enum.Enum):
-    # TODO [#2]: Find more audio modes
-    #   atm it will still be a string
+    # TODO: Find more audio modes
+    #   Until we can fill whole `Enum` it will still be used as a string.
     Stereo = "STEREO"
 
 
@@ -392,8 +393,9 @@ class Track(TidalObject, generic.Track):
         subtitles = await self.subtitles()
         if subtitles:
             # TODO [#60]: Support for subtitles tag
-            #   prelimitary invalid support for subtitles tag
-            #   depends on beetbox/mediafile#48
+            #   Preliminary (invalid) support for subtitles tag.
+            #   Subtitles are not supported in `mediafile` at the moment.
+            #   depends on solving the beetbox/mediafile#48
             tags["subtitles"] = subtitles
 
         return tags
