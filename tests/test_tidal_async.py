@@ -6,7 +6,7 @@ import pytest
 
 from tidal_async import Album, Artist, AudioQuality, Playlist, TidalSession, Track, extract_client_id
 
-# TODO [#19]: Unit tests!
+# TODO: Unit tests!
 #   - [ ] login process (not sure how to do this - it's interactive oauth2)
 #   - [x] session refreshing
 #   - [ ] Track
@@ -30,6 +30,7 @@ from tidal_async import Album, Artist, AudioQuality, Playlist, TidalSession, Tra
 #       - [x] caching of albums
 #       - [x] caching of playlists
 #       - [x] caching of artists
+# EDIT TEST
 
 
 @pytest.mark.asyncio
