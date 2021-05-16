@@ -177,7 +177,7 @@ class TidalSession(generic.Session):
         return await self.request("POST", url, **kwargs)
 
     async def logout(self):
-        # TODO: TidalSession.logout
+        # TODO [$60a138824dfa650759734b89]: TidalSession.logout
         #   Android app doesn't send any request when clicking "Log out" button
         #   Do we need this?
         raise NotImplementedError
@@ -288,8 +288,8 @@ class TidalMultiSession(TidalSession):
     It helps with overcoming region lock and rate limits using multiple Tidal accounts and possibly separate proxies.
     """
 
-    # TODO: Run request on random session in TidalMultiSession
-    # TODO: Retry failed (404) requests (regionlock) on next session in TidalMultiSession
+    # TODO [$60a138824dfa650759734b8a]: Run request on random session in TidalMultiSession
+    # TODO [$60a138824dfa650759734b8b]: Retry failed (404) requests (regionlock) on next session in TidalMultiSession
     # TODO [#61]: Merge search results from all sessions in TidalMultiSession
     def __init__(self, client_id: str):
         """
