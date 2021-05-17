@@ -267,7 +267,7 @@ class TidalSession(generic.Session):
 
     @staticmethod
     def is_valid_url(url: str) -> bool:
-        """Checks if `url` is valid Tidal URL
+        """Performs a basic check if `url` looks like a Tidal URL
 
         :param url: URL to be checked
         :return: `True` if valid Tidal URL, else `False`
