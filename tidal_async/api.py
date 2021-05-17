@@ -70,7 +70,7 @@ class TidalObject(generic.Object, ABC):
     @lru_cache
     @cacheable
     async def from_id(cls, sess: "TidalSession", id_, id_field_name: str = "id") -> "TidalObject":
-        """Gets object from Tidal based on ID
+        """Fetches object from Tidal based on ID
 
         example:
         >>> await Track.from_id(sess, 22563746)
@@ -94,9 +94,9 @@ class TidalObject(generic.Object, ABC):
 
         :param sess: :class:`TidalSession` instance to use when loading data from Tidal
         :param id_: Tidal ID of object
-        :param id_field_name: object JSON id field name (eg. `"id"` for :class:`Track`, `"uuid"` for :class:`Playlist`)
+        :param id_field_name: object JSON id field name (e.g. `"id"` for :class:`Track`, `"uuid"` for :class:`Playlist`)
         :raises NotImplementedError: when particular object can't be fetched by ID
-        :return: corresponding object, eg. :class:`Track` or :class:`Playlist`
+        :return: corresponding object, e.g. :class:`Track` or :class:`Playlist`
         """
         if cls is TidalObject:
             # method should be used on child classes
@@ -108,7 +108,7 @@ class TidalObject(generic.Object, ABC):
 
     @classmethod
     async def from_url(cls, sess: "TidalSession", url: str) -> "TidalObject":
-        """Gets object from Tidal based on URL
+        """Fetches object from Tidal based on URL
 
         example:
         >>> await Track.from_url(sess, 'https://www.tidal.com/track/22563746')
@@ -120,14 +120,18 @@ class TidalObject(generic.Object, ABC):
         >>> await Artist.from_url(sess, 'https://www.tidal.com/artist/17752')
         <tidal_async.api.Artist (17752): Psychostick>
 
-        TIP: :class:`TidalSession`'s function can be used instead, it will autodetect object type!
+        TIP: :class:`TidalSession`'s functions can be used instead, those will autodetect object type!
         >>> await sess.object_from_url('https://www.tidal.com/artist/17752')
         <tidal_async.api.Artist (17752): Psychostick>
+        >>> [o async for o in sess.parse_urls('''parsing https://www.tidal.com/artist/17752 topkek
+        ... https://www.tidal.com/album/91969976 urls''')]
+        [<tidal_async.api.Artist (17752): Psychostick>, <tidal_async.api.Album (91969976): Do>]
 
         :param sess: :class:`TidalSession` instance to use when loading data from Tidal
         :param url: Tidal URL to corresponding object
         :raises NotImplementedError: when particular object type can't be fetched by URL
-        :return: corresponding object, eg. :class:`Track` or :class:`Playlist`
+        :raises InvalidURL: when URL is being unparsable by this :class:`TidalObject`
+        :return: corresponding object, e.g. :class:`Track` or :class:`Playlist`
         """
         if cls is TidalObject:
             # method should be used on child classes
@@ -273,11 +277,11 @@ class Track(TidalObject, generic.Track):
         preferred_quality: Optional[AudioQuality] = None,
         **kwargs,
     ) -> str:
-        """Gets direct URL to music file
+        """Fetches direct URL to music file
 
-        :param required_quality: required :class:`AudioQuality` for track
+        :param required_quality: required (lower limit) :class:`AudioQuality` for track
         if ommited value from session is used
-        :param preferred_quality: maximum :class:`AudioQuality` you want to get
+        :param preferred_quality: preferred (upper limit) :class:`AudioQuality` you want to get
         if ommited value from session is used
         :param kwargs: not used
         :raises InsufficientAudioQuality: when available :class:`AudioQuality` is lower than `required_quality`
@@ -314,7 +318,7 @@ class Track(TidalObject, generic.Track):
         return self._lyrics_dict
 
     async def lyrics(self) -> Optional[str]:
-        """Gets lyrics for :class:`Track`
+        """Fetches lyrics for :class:`Track`
 
         :return: Lyrics string when available, `None` when not
         """
@@ -325,7 +329,7 @@ class Track(TidalObject, generic.Track):
         return lyrics_dict["lyrics"]
 
     async def subtitles(self) -> Optional[str]:
-        """Gets subtitles (time-synchronized lyrics) for :class:`Track`
+        """Fetches subtitles (time-synchronized lyrics) for :class:`Track`
 
         :return: Subtitles string in LRC format when available, `None` when not
         """
@@ -421,7 +425,7 @@ class Playlist(TidalObject, generic.ObjectCollection[Track]):
 
     @classmethod
     async def from_id(cls, sess: "TidalSession", id_: str, id_field_name="uuid") -> "Playlist":
-        """Gets :class:`Playlist` from Tidal based on ID
+        """Fetches :class:`Playlist` from Tidal based on ID
 
         example:
         >>> await Playlist.from_id(sess, "dcbab999-7523-4e2f-adf4-57d10fc17516")
