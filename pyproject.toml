@@ -7,14 +7,14 @@ authors = ["JuniorJPDJ <dev@juniorjpdj.pl>", "Kasper Seweryn <github@wvffle.net>
 [tool.poetry.dependencies]
 python = "^3.7"
 aiohttp = "^3.6"
-music-service-async-interface = { git = "https://github.com/FUMR/music-service-async-interface.git", rev = "b4b64a98411b57582c4205a9c95a3f93664cd71d" }
+music-service-async-interface = { git = "https://github.com/FUMR/music-service-async-interface.git", rev = "1b63d300b245bd483c69edecbbecfb641c94c45c" }
 androguard = { version = "^3.3.5", optional = true }
 http-seekable-file = { git = "https://github.com/JuniorJPDJ/http-seekable-file.git", tag = "v0.3.0", extras = ["async"], optional = true }
 
 [tool.poetry.dev-dependencies]
-pre-commit = "^2.7.1"
-pytest = "^5.2"
-pytest-asyncio = "^0.14.0"
+pre-commit = "^2.12"
+pytest = "^6.2"
+pytest-asyncio = "^0.15"
 
 [tool.poetry.extras]
 client_id = ["androguard"]
