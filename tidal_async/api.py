@@ -2,9 +2,9 @@ import asyncio
 import base64
 import enum
 import json
-from abc import ABC, abstractmethod
+from abc import ABC
 from functools import lru_cache
-from typing import TYPE_CHECKING, AsyncGenerator, Optional, Tuple
+from typing import TYPE_CHECKING, AsyncGenerator, Optional, Tuple, Type
 
 import music_service_async_interface as generic
 from aiohttp import ClientResponseError
@@ -17,10 +17,6 @@ if TYPE_CHECKING:
 
 
 # TODO [#47]: Fix caching of Objects when created with __init__
-
-# TODO [#48]: Generic iterator
-#   Now we have very similar code in Album.tracks, Playlist.tracks and Artist.albums.
-#   It would be cool to merge this to generic function and just pass some params, to deduplicate code
 
 
 class AudioQuality(generic.AudioQuality):
@@ -60,6 +56,28 @@ class TidalObject(generic.Object, ABC):
     def __repr__(self):
         cls = self.__class__
         return f"<{cls.__module__}.{cls.__qualname__} ({self.get_id()})>"
+
+    async def _iter_coll(self, coll_name, obj_type: Type["TidalObject"], per_request_limit):
+        offset = 0
+        total_items = 1
+
+        while offset < total_items:
+            resp = await self.sess.get(
+                f"{self._apiurl}/{self.get_id()}/{coll_name}",
+                params={
+                    "countryCode": self.sess.country_code,
+                    "offset": offset,
+                    "limit": per_request_limit,
+                },
+            )
+            data = await resp.json()
+
+            total_items = data["totalNumberOfItems"]
+            offset = data["offset"] + data["limit"]
+
+            for item in data["items"]:
+                # python doesn't support `yield from` in async functions.. why?
+                yield obj_type(self.sess, item)
 
     async def reload_info(self) -> None:
         """Reloads object's information from Tidal server"""
@@ -457,26 +475,8 @@ class Playlist(TidalObject, generic.ObjectCollection[Track]):
         :param per_request_limit: max amount of :class:`Track`s to load in one request
         :yield: :class:`Track`s in the :class:`Playlist`
         """
-        offset = 0
-        total_items = 1
-
-        while offset < total_items:
-            resp = await self.sess.get(
-                f"/v1/playlists/{self.get_id()}/tracks",
-                params={
-                    "countryCode": self.sess.country_code,
-                    "offset": offset,
-                    "limit": per_request_limit,
-                },
-            )
-            data = await resp.json()
-
-            total_items = data["totalNumberOfItems"]
-            offset = data["offset"] + data["limit"]
-
-            for track in data["items"]:
-                # python doesn't support `yield from` in async functions.. why?
-                yield Track(self.sess, track)
+        async for track in self._iter_coll("tracks", Track, per_request_limit):
+            yield track
 
 
 class Album(TidalObject, generic.ObjectCollection[Track]):
@@ -526,26 +526,8 @@ class Album(TidalObject, generic.ObjectCollection[Track]):
         :param per_request_limit: max amount of :class:`Track`s to load in one request
         :yield: :class:`Track`s from :class:`Album`
         """
-        offset = 0
-        total_items = 1
-
-        while offset < total_items:
-            resp = await self.sess.get(
-                f"/v1/albums/{self.get_id()}/tracks",
-                params={
-                    "countryCode": self.sess.country_code,
-                    "offset": offset,
-                    "limit": per_request_limit,
-                },
-            )
-            data = await resp.json()
-
-            total_items = data["totalNumberOfItems"]
-            offset = data["offset"] + data["limit"]
-
-            for track in data["items"]:
-                # python doesn't support `yield from` in async functions.. why?
-                yield Track(self.sess, track)
+        async for track in self._iter_coll("tracks", Track, per_request_limit):
+            yield track
 
 
 class Artist(TidalObject, generic.ObjectCollection[Album]):
@@ -587,23 +569,5 @@ class Artist(TidalObject, generic.ObjectCollection[Album]):
         :param per_request_limit: max amount of :class:`Album`s to load in one request
         :yield: :class:`Album`s created by the :class:`Artist`
         """
-        offset = 0
-        total_items = 1
-
-        while offset < total_items:
-            resp = await self.sess.get(
-                f"/v1/artists/{self.get_id()}/albums",
-                params={
-                    "countryCode": self.sess.country_code,
-                    "offset": offset,
-                    "limit": per_request_limit,
-                },
-            )
-            data = await resp.json()
-
-            total_items = data["totalNumberOfItems"]
-            offset = data["offset"] + data["limit"]
-
-            for album in data["items"]:
-                # python doesn't support `yield from` in async functions.. why?
-                yield Album(self.sess, album)
+        async for album in self._iter_coll("albums", Album, per_request_limit):
+            yield album
