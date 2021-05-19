@@ -61,10 +61,15 @@ class TidalObject(generic.Object, ABC):
         cls = self.__class__
         return f"<{cls.__module__}.{cls.__qualname__} ({self.get_id()})>"
 
-    @abstractmethod
     async def reload_info(self) -> None:
         """Reloads object's information from Tidal server"""
-        ...
+        resp = await self.sess.get(
+            f"{self._apiurl}/{self.get_id()}",
+            params={
+                "countryCode": self.sess.country_code,
+            },
+        )
+        self.dict = await resp.json()
 
     @classmethod
     @lru_cache
@@ -176,6 +181,7 @@ class ArtistType(enum.Enum):
 
 class Track(TidalObject, generic.Track):
     urlname = "track"
+    _apiurl = "/v1/tracks"
 
     def __init__(self, sess: "TidalSession", dict_, id_field_name="id"):
         super().__init__(sess, dict_, id_field_name)
@@ -187,13 +193,7 @@ class Track(TidalObject, generic.Track):
 
     async def reload_info(self) -> None:
         """Reloads :class:`Track`'s information from Tidal server"""
-        resp = await self.sess.get(
-            f"/v1/tracks/{self.get_id()}",
-            params={
-                "countryCode": self.sess.country_code,
-            },
-        )
-        self.dict = await resp.json()
+        await super().reload_info()
         self._lyrics_dict = None
 
     @property
@@ -407,21 +407,11 @@ class Track(TidalObject, generic.Track):
 
 class Playlist(TidalObject, generic.ObjectCollection[Track]):
     urlname = "playlist"
+    _apiurl = "/v1/playlists"
 
     def __repr__(self):
         cls = self.__class__
         return f"<{cls.__module__}.{cls.__qualname__} ({self.get_id()}): {self.title}>"
-
-    async def reload_info(self) -> None:
-        """Reloads :class:`Playlist`'s information from Tidal server"""
-        resp = await self.sess.get(
-            f"/v1/playlists/{self.get_id()}",
-            params={
-                "countryCode": self.sess.country_code,
-            },
-        )
-
-        self.dict = await resp.json()
 
     @classmethod
     async def from_id(cls, sess: "TidalSession", id_: str, id_field_name="uuid") -> "Playlist":
@@ -491,6 +481,7 @@ class Playlist(TidalObject, generic.ObjectCollection[Track]):
 
 class Album(TidalObject, generic.ObjectCollection[Track]):
     urlname = "album"
+    _apiurl = "/v1/albums"
 
     @property
     def artist(self):
@@ -502,17 +493,6 @@ class Album(TidalObject, generic.ObjectCollection[Track]):
     def __repr__(self):
         cls = self.__class__
         return f"<{cls.__module__}.{cls.__qualname__} ({self.get_id()}): {self.title}>"
-
-    async def reload_info(self) -> None:
-        """Reloads :class:`Album`'s information from Tidal server"""
-        resp = await self.sess.get(
-            f"/v1/albums/{self.get_id()}",
-            params={
-                "countryCode": self.sess.country_code,
-            },
-        )
-
-        self.dict = await resp.json()
 
     @property
     def cover(self) -> Optional[Cover]:
@@ -570,21 +550,11 @@ class Album(TidalObject, generic.ObjectCollection[Track]):
 
 class Artist(TidalObject, generic.ObjectCollection[Album]):
     urlname = "artist"
+    _apiurl = "/v1/artists"
 
     def __repr__(self):
         cls = self.__class__
         return f"<{cls.__module__}.{cls.__qualname__} ({self.get_id()}): {self.name}>"
-
-    async def reload_info(self) -> None:
-        """Reloads :class:`Artist`'s information from Tidal server"""
-        resp = await self.sess.get(
-            f"/v1/artists/{self.get_id()}",
-            params={
-                "countryCode": self.sess.country_code,
-            },
-        )
-
-        self.dict = await resp.json()
 
     @property
     def cover(self) -> Optional[Cover]:
