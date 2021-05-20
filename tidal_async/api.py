@@ -201,7 +201,7 @@ class ArtistType(enum.Enum):
     artist = "ARTIST"
 
 
-class Track(TidalObject, generic.Track):
+class Track(TidalObject, generic.Searchable, generic.Track):
     urlname = "track"
     apiname = "tracks"
 
@@ -412,7 +412,7 @@ class Track(TidalObject, generic.Track):
         return tags
 
 
-class Playlist(TidalObject, generic.ObjectCollection[Track]):
+class Playlist(TidalObject, generic.Searchable, generic.ObjectCollection[Track]):
     urlname = "playlist"
     apiname = "playlists"
     _id_field_name = "uuid"
@@ -468,7 +468,7 @@ class Playlist(TidalObject, generic.ObjectCollection[Track]):
             yield track
 
 
-class Album(TidalObject, generic.ObjectCollection[Track]):
+class Album(TidalObject, generic.Searchable, generic.ObjectCollection[Track]):
     urlname = "album"
     apiname = "albums"
 
@@ -520,7 +520,7 @@ class Album(TidalObject, generic.ObjectCollection[Track]):
             yield track
 
 
-class Artist(TidalObject, generic.ObjectCollection[Album]):
+class Artist(TidalObject, generic.Searchable, generic.ObjectCollection[Album]):
     urlname = "artist"
     apiname = "artists"
 

@@ -2,7 +2,7 @@ import base64
 import hashlib
 import os
 import urllib.parse
-from typing import Awaitable, Callable, List, Optional
+from typing import AsyncGenerator, Awaitable, Callable, List, Optional, Type, Union
 
 import aiohttp
 import aiohttp.typedefs
@@ -281,6 +281,67 @@ class TidalSession(generic.Session):
             return True
 
         return False
+
+    async def search(
+        self,
+        query: str,
+        types: Optional[Union[Type["generic.Searchable"], List[Type["generic.Searchable"]]]] = None,
+        limit: int = 10,
+    ) -> AsyncGenerator[TidalObject, None]:
+        """Searches Tidal for specific type(s) of :class:`Searchable` objects using `query`
+        Accepts single :class:`Searchable` object, list of them or allows to entirely skip `types` parameter.
+        Accepted types are: Track, Playlist, Album, Artist
+
+        example:
+        >>> [i async for i in sess.search("test", limit=2)]
+        [<tidal_async.api.Track (150607332): Wiatr, Sobel, be vis - Testarossa>,
+         <tidal_async.api.Track (96312544): Joji - TEST DRIVE>,
+         <tidal_async.api.Playlist (b6c8ce02-8ee3-49fc-8f8e-8018436ec55d): Car Test with Elliott Wilson>,
+         <tidal_async.api.Playlist (abe0bf4b-2f61-4601-be0a-c24fa8e6c521): Ultimate System Testers>,
+         <tidal_async.api.Album (89179624): TESTING>,
+         <tidal_async.api.Album (27832552): Testimony (Deluxe)>,
+         <tidal_async.api.Artist (14813): Testament>,
+         <tidal_async.api.Artist (25733): Crash Test Dummies>]
+        >>> [i async for i in sess.search("test", [Track, Artist], 2)]
+        [<tidal_async.api.Track (150607332): Wiatr, Sobel, be vis - Testarossa>,
+         <tidal_async.api.Track (96312544): Joji - TEST DRIVE>,
+         <tidal_async.api.Artist (14813): Testament>,
+         <tidal_async.api.Artist (25733): Crash Test Dummies>]
+        >>> [i async for i in sess.search("test", Track, 2)]
+        [<tidal_async.api.Track (150607332): Wiatr, Sobel, be vis - Testarossa>,
+         <tidal_async.api.Track (96312544): Joji - TEST DRIVE>]
+
+        :param query: search string/phrase
+        :param types: :class:`Searchable` type or list of types, restricts search results to this type,
+        e.g. if you want to search for tracks use `sess.search('text', Track)`
+        or if you want to search for albums and playlists use `sess.search('text', [Album, Playlist])`.
+        Also allows to search for all possible objects, then this parameter is left unset, set to None or an empty list.
+        :param limit: amount of records per type to search for
+        Maximum amount of results will be `len(types) * limit`.
+        :raises InvalidSearchType: when `types` contains invalid type
+        (not a subclass of :class:`Searchable` or :class:`TidalObject`)
+        :yield: :class:`TidalObject`s for each search result
+        """
+        all_types = []
+        for t in TidalObject.__subclasses__():
+            if issubclass(t, generic.Searchable):
+                all_types.append(t)
+
+        types_: List[Type[TidalObject]] = all_types if types is None else types if isinstance(types, list) else [types]
+        for t in types_:
+            if not issubclass(t, TidalObject) or not issubclass(t, generic.Searchable):
+                raise generic.InvalidSearchType(f"{t} is invalid type for search")
+
+        types_str = ",".join(t.apiname for t in types_)
+
+        resp = await self.get(
+            "/v1/search", params={"query": query, "types": types_str, "countryCode": self.country_code, "limit": limit}
+        )
+        data = await resp.json()
+
+        for t in all_types:
+            for item in data[t.apiname]["items"]:
+                yield t(self, item)
 
 
 class TidalMultiSession(TidalSession):

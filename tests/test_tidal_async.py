@@ -22,7 +22,7 @@ from tidal_async import Album, Artist, AudioQuality, Playlist, TidalSession, Tra
 #       - [x] listing albums from artists
 #   - [x] loading cover arts
 #   - [x] parsing URLs
-#   - [ ] searching (first we need search)
+#   - [x] searching
 #   - [x] extracting client_id from Tidal Android `.apk`
 #   - [ ] TidalMultiSession tests (what kind of?)
 #   - [x] caching TidalObject creation
@@ -226,6 +226,28 @@ async def test_object_cache(sess: TidalSession, url):
     obj1 = await sess.object_from_url(url)
     obj2 = await sess.object_from_url(url)
     assert obj1 is obj2
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize(
+    "query, type, result_repr",
+    (
+        (
+            "kek",
+            Track,
+            "<tidal_async.api.Track (118769589): Pezet, Paluch, KęKę, Sokół, Ten Typ Mes - Gorzka woda (prod. Auer) (Remix)>",
+        ),
+        ("dongural", Artist, "<tidal_async.api.Artist (4609597): donGURALesko>"),
+        (
+            "need for speed",
+            Playlist,
+            "<tidal_async.api.Playlist (dcbab999-7523-4e2f-adf4-57d10fc17516): Soundtracking: Need for Speed>",
+        ),
+        ("magnum ig", Album, "<tidal_async.api.Album (170232038): Magnum Ignotum>"),
+    ),
+)
+async def test_search(sess: TidalSession, query, type, result_repr):
+    assert repr(await sess.search(query, type, 1).__anext__()) == result_repr
 
 
 @pytest.mark.asyncio
