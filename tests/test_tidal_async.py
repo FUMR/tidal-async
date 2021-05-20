@@ -107,7 +107,7 @@ async def test_track_subtitles(sess: TidalSession, id_, subtitles_len):
 )
 async def test_album_title(sess: TidalSession, id_, artist, title):
     album = await sess.album(id_)
-    assert album.title == title and album.artist.name == artist
+    assert album.title == title and album.artist_name == artist
 
 
 @pytest.mark.asyncio
