@@ -4,13 +4,13 @@ import enum
 import json
 from abc import ABC
 from functools import lru_cache
-from typing import TYPE_CHECKING, AsyncGenerator, Optional, Tuple, Type
+from typing import TYPE_CHECKING, AsyncGenerator, List, Optional, Tuple, Type
 
 import music_service_async_interface as generic
 from aiohttp import ClientResponseError
 
 from tidal_async.exceptions import InsufficientAudioQuality
-from tidal_async.utils import artists_names, cacheable, gen_artist, gen_title, id_from_url, snake_to_camel
+from tidal_async.utils import cacheable, gen_artist, gen_title, id_from_url, snake_to_camel
 
 if TYPE_CHECKING:
     from tidal_async import TidalSession
@@ -48,10 +48,15 @@ class Cover(generic.Cover):
 
 
 class TidalObject(generic.Object, ABC):
-    def __init__(self, sess: "TidalSession", dict_, id_field_name="id"):
+    _id_field_name = "id"
+
+    def __init__(
+        self,
+        sess: "TidalSession",
+        dict_,
+    ):
         self.sess: "TidalSession" = sess
         self.dict = dict_
-        self._id_field_name = id_field_name
 
     def __repr__(self):
         cls = self.__class__
@@ -63,7 +68,7 @@ class TidalObject(generic.Object, ABC):
 
         while offset < total_items:
             resp = await self.sess.get(
-                f"{self._apiurl}/{self.get_id()}/{coll_name}",
+                f"/v1/{self.apiname}/{self.get_id()}/{coll_name}",
                 params={
                     "countryCode": self.sess.country_code,
                     "offset": offset,
@@ -82,7 +87,7 @@ class TidalObject(generic.Object, ABC):
     async def reload_info(self) -> None:
         """Reloads object's information from Tidal server"""
         resp = await self.sess.get(
-            f"{self._apiurl}/{self.get_id()}",
+            f"/v1/{self.apiname}/{self.get_id()}",
             params={
                 "countryCode": self.sess.country_code,
             },
@@ -92,7 +97,7 @@ class TidalObject(generic.Object, ABC):
     @classmethod
     @lru_cache
     @cacheable
-    async def from_id(cls, sess: "TidalSession", id_, id_field_name: str = "id") -> "TidalObject":
+    async def from_id(cls, sess: "TidalSession", id_) -> "TidalObject":
         """Fetches object from Tidal based on ID
 
         example:
@@ -117,7 +122,6 @@ class TidalObject(generic.Object, ABC):
 
         :param sess: :class:`TidalSession` instance to use when loading data from Tidal
         :param id_: Tidal ID of object
-        :param id_field_name: object JSON id field name (e.g. `"id"` for :class:`Track`, `"uuid"` for :class:`Playlist`)
         :raises NotImplementedError: when particular object can't be fetched by ID
         :return: corresponding object, e.g. :class:`Track` or :class:`Playlist`
         """
@@ -125,7 +129,7 @@ class TidalObject(generic.Object, ABC):
             # method should be used on child classes
             raise NotImplementedError
 
-        obj = cls(sess, {id_field_name: id_}, id_field_name)
+        obj = cls(sess, {cls._id_field_name: id_})
         await obj.reload_info()
         return obj
 
@@ -199,10 +203,10 @@ class ArtistType(enum.Enum):
 
 class Track(TidalObject, generic.Track):
     urlname = "track"
-    _apiurl = "/v1/tracks"
+    apiname = "tracks"
 
-    def __init__(self, sess: "TidalSession", dict_, id_field_name="id"):
-        super().__init__(sess, dict_, id_field_name)
+    def __init__(self, sess: "TidalSession", dict_):
+        super().__init__(sess, dict_)
         self._lyrics_dict = None
 
     def __repr__(self):
@@ -224,9 +228,9 @@ class Track(TidalObject, generic.Track):
     @property
     def artist_name(self) -> str:
         """
-        :return: :class:`Track`'s :class:`Artist`'s name
+        :return: :class:`Track`'s :class:`Artist` name
         """
-        return self.artist.name
+        return gen_artist(self)
 
     @property
     def album(self) -> "Album":
@@ -243,28 +247,21 @@ class Track(TidalObject, generic.Track):
         return self.album.cover
 
     @property
-    def artist(self) -> "Artist":
-        """
-        :return: :class:`Track`'s :class:`Artist`
-        """
-        return Artist(self.sess, self["artist"])
-
-    async def artists(self) -> AsyncGenerator[Tuple["Artist", ArtistType], None]:
-        """Generates async interable of :class:`Artist`s of the :class:`Track` with their corresponding role
+    def artists(self) -> List[Tuple["Artist", ArtistType]]:
+        """Generates :class:`list` of :class:`Artist`s of the :class:`Track` with their corresponding role
 
         example:
         >>> track = await sess.track(182424124)
-        >>> [a async for a in track.artists()]
+        >>> track.artists
         [(<tidal_async.api.Artist (3639903): Oki>, <ArtistType.main: 'MAIN'>),
          (<tidal_async.api.Artist (9191980): Young Igi>, <ArtistType.main: 'MAIN'>),
          (<tidal_async.api.Artist (6803759): Otsochodzi>, <ArtistType.main: 'MAIN'>),
          (<tidal_async.api.Artist (9729783): OIO>, <ArtistType.featured: 'FEATURED'>),
          (<tidal_async.api.Artist (10518755): @Atutowy>, <ArtistType.featured: 'FEATURED'>)]
 
-        :yield: tuples of `(`:class:`Artist``, `:class:`ArtistType``)`
+        :return: :class:`list` of `(`:class:`Artist``, `:class:`ArtistType``)`
         """
-        for artist in self["artists"]:
-            yield await Artist.from_id(self.sess, artist["id"]), ArtistType(artist["type"])
+        return [(Artist(self.sess, a), ArtistType(a["type"])) for a in self["artists"]]
 
     @property
     def audio_quality(self) -> AudioQuality:
@@ -363,25 +360,17 @@ class Track(TidalObject, generic.Track):
         :return: dict containing tags compatbile with `mediafile` library
         """
         album = self.album
-        await album.reload_info()
 
-        [artist, artists, albumartist, albumartists, url, lyrics] = await asyncio.gather(
-            gen_artist(self),
-            artists_names(self),
-            gen_artist(album),
-            artists_names(album),
-            self.get_url(),
-            self.lyrics(),
-        )
+        [url, lyrics, _] = await asyncio.gather(self.get_url(), self.lyrics(), album.reload_info())
 
         tags = {
             # general metatags
-            "artist": artist,
-            "artists": artists,
+            "artist": self.artist_name,
+            "artists": [a[0].name for a in self.artists],
             "title": gen_title(self),
             # album related metatags
-            "albumartist": albumartist,
-            "albumartists": albumartists,
+            "albumartist": album.artist_name,
+            "albumartists": [a[0].name for a in album.artists],
             "album": gen_title(album),
             "date": album.release_date,
             # track/disc position metatags
@@ -425,14 +414,15 @@ class Track(TidalObject, generic.Track):
 
 class Playlist(TidalObject, generic.ObjectCollection[Track]):
     urlname = "playlist"
-    _apiurl = "/v1/playlists"
+    apiname = "playlists"
+    _id_field_name = "uuid"
 
     def __repr__(self):
         cls = self.__class__
         return f"<{cls.__module__}.{cls.__qualname__} ({self.get_id()}): {self.title}>"
 
     @classmethod
-    async def from_id(cls, sess: "TidalSession", id_: str, id_field_name="uuid") -> "Playlist":
+    async def from_id(cls, sess: "TidalSession", id_: str) -> "Playlist":
         """Fetches :class:`Playlist` from Tidal based on ID
 
         example:
@@ -445,10 +435,9 @@ class Playlist(TidalObject, generic.ObjectCollection[Track]):
 
         :param sess: :class:`TidalSession` instance to use when loading data from Tidal
         :param id_: Tidal ID of :class:`Playlist`
-        :param id_field_name: name of the ID field from the object returned by Tidal API (`uuid` for :class:`Playlist`)
         :return: :class:`Playlist` corresponding to Tidal ID
         """
-        playlist = await super().from_id(sess, id_, id_field_name)
+        playlist = await super().from_id(sess, id_)
         assert isinstance(playlist, cls)
         return playlist
 
@@ -481,18 +470,18 @@ class Playlist(TidalObject, generic.ObjectCollection[Track]):
 
 class Album(TidalObject, generic.ObjectCollection[Track]):
     urlname = "album"
-    _apiurl = "/v1/albums"
-
-    @property
-    def artist(self):
-        """
-        :return: :class:`Album`'s :class:`Artist`
-        """
-        return Artist(self.sess, self["artist"])
+    apiname = "albums"
 
     def __repr__(self):
         cls = self.__class__
         return f"<{cls.__module__}.{cls.__qualname__} ({self.get_id()}): {self.title}>"
+
+    @property
+    def artist_name(self) -> str:
+        """
+        :return: :class:`Album`'s :class:`Artist` name
+        """
+        return gen_artist(self)
 
     @property
     def cover(self) -> Optional[Cover]:
@@ -501,19 +490,20 @@ class Album(TidalObject, generic.ObjectCollection[Track]):
         """
         return Cover(self.sess, self["cover"]) if self["cover"] is not None else None
 
-    async def artists(self) -> AsyncGenerator[Tuple["Artist", ArtistType], None]:
-        """Generates async interable of :class:`Artist`s of the :class:`Album` with their corresponding role
+    @property
+    def artists(self) -> List[Tuple["Artist", ArtistType]]:
+        """Generates :class:`list` of :class:`Artist`s of the :class:`Album` with their corresponding role
 
         example:
         >>> album = await sess.album(180429444)
-        >>> [a async for a in album.artists()]
+        >>> album.artists
         [(<tidal_async.api.Artist (4609597): donGURALesko>, <ArtistType.main: 'MAIN'>),
          (<tidal_async.api.Artist (3974059): The Returners>, <ArtistType.main: 'MAIN'>)]
 
-        :yield: tuples of `(`:class:`Artist``, `:class:`ArtistType``)`
+        :return: :class:`list` of `(`:class:`Artist``, `:class:`ArtistType``)`
         """
-        for artist in self["artists"]:
-            yield await Artist.from_id(self.sess, artist["id"]), ArtistType(artist["type"])
+
+        return [(Artist(self.sess, a), ArtistType(a["type"])) for a in self["artists"]]
 
     async def tracks(self, per_request_limit: int = 50) -> AsyncGenerator[Track, None]:
         """Generates async interable of :class:`Tracks`s in the :class:`Album`
@@ -532,7 +522,7 @@ class Album(TidalObject, generic.ObjectCollection[Track]):
 
 class Artist(TidalObject, generic.ObjectCollection[Album]):
     urlname = "artist"
-    _apiurl = "/v1/artists"
+    apiname = "artists"
 
     def __repr__(self):
         cls = self.__class__

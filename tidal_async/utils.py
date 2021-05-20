@@ -89,24 +89,20 @@ def gen_title(obj) -> str:
     return f"{title} ({version})" if version and version not in title else title
 
 
-async def gen_artist(obj) -> str:
+def gen_artist(obj) -> str:
     """Generates artist string from track/album
 
-    :param obj: object with `artists` function being Async Generator of `(`:class:`Artist``, `:class:`ArtistType``)`
-    eg. Track or Album
+    :param obj: object with `artists` function returning :class:`list` of `(`:class:`Artist``, `:class:`ArtistType``)`
+    e.g. Track or Album
     :return: string of artists with their roles
-    eg.
+    e.g.
     `Main, Artists`
     `Main, Artists feat. With, Featuring`
     """
-    artists = [a async for a in obj.artists()]
+    artists = obj.artists
     main = ", ".join(a[0].name for a in artists if a[1].value == "MAIN")
     feat = ", ".join(a[0].name for a in artists if a[1].value == "FEATURED")
     return main if not feat else f"{main} feat. {feat}"
-
-
-async def artists_names(obj):
-    return [a[0].name async for a in obj.artists()]
 
 
 try:
