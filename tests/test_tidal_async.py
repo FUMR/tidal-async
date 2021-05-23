@@ -305,9 +305,9 @@ async def test_cover_download(sess: TidalSession, object_url, cover_size, sha256
             152676390,
             AudioQuality.Master,
             AudioQuality.Master,
-            57347594,
+            57347313,
             "audio/flac",
-            '"5e26dad761f202b59af8ac9962e7ccb7-7"',
+            '"3bb27f3e6d8f7fd987bcc0d3cdc7c452"',
         ),
     ),
 )
@@ -315,7 +315,7 @@ async def test_track_download(sess: TidalSession, id_, required_quality, preferr
     track = await sess.track(id_)
     file = await track.get_async_file(required_quality, preferred_quality)
 
-    assert len(file) == file_size and file.mimetype == mimetype and file.resp_headers["ETag"] == etag
+    assert file.mimetype == mimetype and file.resp_headers["ETag"] == etag and len(file) == file_size
 
 
 @pytest.mark.asyncio
