@@ -10,18 +10,27 @@ on:
 jobs:
   pytest:
     name: PyTest
-    runs-on: ubuntu-latest
+
+    strategy:
+      matrix:
+        os: [ ubuntu-latest, macos-latest, windows-latest ]
+        python-version: [ '3.7', '3.8', '3.9', 'pypy-3.7' ]
+
+    runs-on: ${{ matrix.os }}
+
     steps:
       - uses: actions/checkout@v2
+
       - uses: actions/setup-python@v2
         with:
-          python-version: 3.8
+          python-version: ${{ matrix.python-version }}
 
       - uses: Gr1N/setup-poetry@v4
+
       - uses: actions/cache@v2
         with:
           path: ~/.cache/pypoetry/virtualenvs
-          key: ${{ runner.os }}-poetry-${{ hashFiles('poetry.lock') }}
+          key: ${{ runner.os }}-poetry-${{ hashFiles('pyproject.toml') }}
           restore-keys: |
             ${{ runner.os }}-poetry-
 
