@@ -95,7 +95,7 @@ class TidalObject(generic.Object, ABC):
         self.dict = await resp.json()
 
     @classmethod
-    @lru_cache
+    @lru_cache()
     @cacheable
     async def from_id(cls, sess: "TidalSession", id_) -> "TidalObject":
         """Fetches object from Tidal based on ID
@@ -422,6 +422,8 @@ class Playlist(TidalObject, generic.Searchable, generic.ObjectCollection[Track])
         return f"<{cls.__module__}.{cls.__qualname__} ({self.get_id()}): {self.title}>"
 
     @classmethod
+    @lru_cache()
+    @cacheable
     async def from_id(cls, sess: "TidalSession", id_: str) -> "Playlist":
         """Fetches :class:`Playlist` from Tidal based on ID
 
