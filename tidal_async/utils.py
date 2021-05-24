@@ -1,5 +1,6 @@
 import asyncio
 import contextlib
+import functools
 from urllib.parse import urlparse
 
 from music_service_async_interface import InvalidURL
@@ -69,6 +70,7 @@ class AsyncCacheable:
 
 def cacheable(f):
     # NOTE: Used snippet from https://stackoverflow.com/a/46723144
+    @functools.wraps(f)
     def wrapped(*args, **kwargs):
         r = f(*args, **kwargs)
         return AsyncCacheable(r)

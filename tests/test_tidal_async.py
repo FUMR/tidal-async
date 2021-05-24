@@ -328,8 +328,10 @@ async def test_client_id_extraction():
 
     async with aiohttp.ClientSession() as session:
         async with session.get(os.getenv("TIDAL_APK_URL")) as resp:
-            while data := await resp.content.read(128 * 1024):  # 128kB chunk size
+            data = await resp.content.read(128 * 1024)  # 128kB chunk size
+            while data:
                 apk_file.write(data)
+                data = await resp.content.read(128 * 1024)
 
     apk_file.seek(0)
 
