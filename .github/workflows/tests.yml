@@ -30,9 +30,7 @@ jobs:
       - uses: actions/cache@v2
         with:
           path: ~/.cache/pypoetry/virtualenvs
-          key: ${{ runner.os }}-poetry-${{ hashFiles('pyproject.toml') }}
-          restore-keys: |
-            ${{ runner.os }}-poetry-
+          key: ${{ matrix.os }}-${{ matrix.python-version }}-poetry-${{ hashFiles('pyproject.toml') }}
 
       - run: poetry install -E client_id -E filelike
 
