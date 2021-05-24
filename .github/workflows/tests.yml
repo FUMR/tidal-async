@@ -15,6 +15,9 @@ jobs:
       matrix:
         os: [ ubuntu-latest, macos-latest, windows-latest ]
         python-version: [ '3.7', '3.8', '3.9', 'pypy-3.7' ]
+        exclude:
+          - os: macos-latest
+            python-version: 'pypy-3.7'
 
     runs-on: ${{ matrix.os }}
 
@@ -31,6 +34,9 @@ jobs:
         with:
           path: ~/.cache/pypoetry/virtualenvs
           key: ${{ matrix.os }}-${{ matrix.python-version }}-poetry-${{ hashFiles('pyproject.toml') }}
+
+      - run: sudo apt-get install -y libxml2-dev libxslt-dev
+        if: ${{ matrix.os == 'ubuntu-latest' }}
 
       - run: poetry install -E client_id -E filelike
 
