@@ -282,10 +282,6 @@ class Track(TidalObject, generic.Searchable, generic.Track):
 
         return await resp.json()
 
-    async def _stream_manifest(self, preferred_audio_quality):
-        data = await self._playbackinfopostpaywall(preferred_audio_quality)
-        return json.loads(base64.b64decode(data["manifest"])), data
-
     async def get_file_url(
         self,
         required_quality: Optional[AudioQuality] = None,
@@ -307,12 +303,16 @@ class Track(TidalObject, generic.Searchable, generic.Track):
         if required_quality is None:
             required_quality = self.sess.required_audio_quality
 
-        manifest, playback_info = await self._stream_manifest(preferred_quality)
+        playback_info = await self._playbackinfopostpaywall(preferred_quality)
         quality = AudioQuality(playback_info["audioQuality"])
 
         if quality < required_quality:
             raise InsufficientAudioQuality(f"Got {quality} for {self}, required audio quality is {required_quality}")
 
+        try:
+            manifest = json.loads(base64.b64decode(playback_info["manifest"]))
+        except json.decoder.JSONDecodeError:
+            return f'data:application/dash+xml;base64,{playback_info["manifest"]}'
         return manifest["urls"][0]
 
     async def _lyrics(self) -> Optional[dict]:
