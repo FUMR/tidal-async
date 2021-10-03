@@ -67,7 +67,7 @@ async def test_track_title(sess: TidalSession, id_, artist, title):
 @pytest.mark.parametrize(
     "id_, lyrics_len",
     (
-        (22563745, None),
+        (6758222, None),
         (22563746, 3079),
     ),
 )
@@ -84,8 +84,8 @@ async def test_track_lyrics(sess: TidalSession, id_, lyrics_len):
 @pytest.mark.parametrize(
     "id_, subtitles_len",
     (
-        (22563745, None),
-        (22563746, 4193),
+        (6758222, None),
+        (22563746, 4181),
     ),
 )
 async def test_track_subtitles(sess: TidalSession, id_, subtitles_len):
