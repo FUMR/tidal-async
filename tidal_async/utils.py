@@ -115,7 +115,7 @@ try:
 except ImportError:
 
     def extract_client_id(apk_file):
-        raise NotImplementedError
+        raise NotImplementedError from None
 
 
 else:
