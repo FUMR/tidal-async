@@ -421,28 +421,6 @@ class Playlist(TidalObject, generic.Searchable, generic.ObjectCollection[Track])
         cls = self.__class__
         return f"<{cls.__module__}.{cls.__qualname__} ({self.get_id()}): {self.title}>"
 
-    @classmethod
-    @lru_cache()
-    @cacheable
-    async def from_id(cls, sess: "TidalSession", id_: str) -> "Playlist":
-        """Fetches :class:`Playlist` from Tidal based on ID
-
-        example:
-        >>> await Playlist.from_id(sess, "dcbab999-7523-4e2f-adf4-57d10fc17516")
-        <tidal_async.api.Playlist (dcbab999-7523-4e2f-adf4-57d10fc17516): Soundtracking: Need for Speed>
-
-        TIP: :class:`TidalSession`'s function can be used instead!
-        >>> await sess.playlist("dcbab999-7523-4e2f-adf4-57d10fc17516")
-        <tidal_async.api.Playlist (dcbab999-7523-4e2f-adf4-57d10fc17516): Soundtracking: Need for Speed>
-
-        :param sess: :class:`TidalSession` instance to use when loading data from Tidal
-        :param id_: Tidal ID of :class:`Playlist`
-        :return: :class:`Playlist` corresponding to Tidal ID
-        """
-        playlist = await super().from_id(sess, id_)
-        assert isinstance(playlist, cls)
-        return playlist
-
     @property
     def cover(self) -> Optional[Cover]:
         """
