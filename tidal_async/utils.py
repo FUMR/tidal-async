@@ -1,8 +1,11 @@
 import asyncio
+import base64
 import contextlib
 import functools
 from urllib.parse import urlparse
 
+import mpegdash.nodes
+import mpegdash.parser
 from music_service_async_interface import InvalidURL
 
 
@@ -105,6 +108,18 @@ def gen_artist(obj) -> str:
     main = ", ".join(a[0].name for a in artists if a[1].value == "MAIN")
     feat = ", ".join(a[0].name for a in artists if a[1].value == "FEATURED")
     return main if not feat else f"{main} feat. {feat}"
+
+
+def dash_mpd_from_data_url(url: str) -> "mpegdash.nodes.MPEGDASH":
+    """Parses MPEG-DASH MPD manifest
+
+    :param url: URL with `data` scheme containing encoded MPD manifest returned from `Track.get_file_url()`
+    :return: parsed MPEG DASH MPD manifest
+    """
+    assert url.startswith("data:application/dash+xml;base64,")
+    mpd_str = base64.b64decode(url.rsplit(",", 1)[1]).decode("utf-8")
+    mpd = mpegdash.parser.MPEGDASHParser.parse(mpd_str)
+    return mpd
 
 
 try:

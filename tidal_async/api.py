@@ -309,10 +309,10 @@ class Track(TidalObject, generic.Searchable, generic.Track):
         if quality < required_quality:
             raise InsufficientAudioQuality(f"Got {quality} for {self}, required audio quality is {required_quality}")
 
-        try:
-            manifest = json.loads(base64.b64decode(playback_info["manifest"]))
-        except json.decoder.JSONDecodeError:
+        if playback_info["manifestMimeType"] == "application/dash+xml":
             return f'data:application/dash+xml;base64,{playback_info["manifest"]}'
+
+        manifest = json.loads(base64.b64decode(playback_info["manifest"]))
         return manifest["urls"][0]
 
     async def _lyrics(self) -> Optional[dict]:
