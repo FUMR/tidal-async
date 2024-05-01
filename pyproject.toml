@@ -13,7 +13,7 @@ http-seekable-file = { git = "https://github.com/JuniorJPDJ/http-seekable-file.g
 
 [tool.poetry.dev-dependencies]
 pre-commit = "^2.12"
-pytest = "^6.2"
+pytest = "^8.0.0"
 pytest-asyncio = "^0.15"
 
 [tool.poetry.extras]
