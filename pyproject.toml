@@ -12,7 +12,7 @@ androguard = { version = "^3.3.5", optional = true }
 http-seekable-file = { git = "https://github.com/JuniorJPDJ/http-seekable-file.git", tag = "v0.3.0", extras = ["async"], optional = true }
 
 [tool.poetry.dev-dependencies]
-pre-commit = "^2.12"
+pre-commit = "^3.0.0"
 pytest = "^6.2"
 pytest-asyncio = "^0.24.0"
 
