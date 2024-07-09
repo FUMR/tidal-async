@@ -2,9 +2,19 @@ import hashlib
 import os
 from typing import Optional, Sized
 
+import mpegdash
 import pytest
 
-from tidal_async import Album, Artist, AudioQuality, Playlist, TidalSession, Track, extract_client_id
+from tidal_async import (
+    Album,
+    Artist,
+    AudioQuality,
+    Playlist,
+    TidalSession,
+    Track,
+    dash_mpd_from_data_url,
+    extract_client_id,
+)
 
 # TODO [#63]: Unit tests!
 #   - [ ] login process (not sure how to do this - it's interactive oauth2)
@@ -285,24 +295,6 @@ async def test_cover_download(sess: TidalSession, object_url, cover_size, sha256
     (
         (
             152676390,
-            AudioQuality.Normal,
-            AudioQuality.Normal,
-            3114802,
-            "audio/mp4",
-            '"780130927f84364021b1300423d60f47"',
-        ),
-        # DASH Support needed (#53)
-        # (
-        #    152676390,
-        #    AudioQuality.High,
-        #    AudioQuality.High,
-        #    10347474,
-        #    "audio/mp4",
-        #    '"970df936b04363528662c9c74b714d13-2"',
-        # ),
-        (152676390, AudioQuality.HiFi, AudioQuality.HiFi, 30980344, "audio/flac", '"3bb27f3e6d8f7fd987bcc0d3cdc7c452"'),
-        (
-            152676390,
             AudioQuality.Master,
             AudioQuality.Master,
             57347313,
@@ -311,11 +303,61 @@ async def test_cover_download(sess: TidalSession, object_url, cover_size, sha256
         ),
     ),
 )
-async def test_track_download(sess: TidalSession, id_, required_quality, preferred_quality, file_size, mimetype, etag):
+async def test_track_download_direct(
+    sess: TidalSession, id_, required_quality, preferred_quality, file_size, mimetype, etag
+):
     track = await sess.track(id_)
     file = await track.get_async_file(required_quality, preferred_quality)
 
     assert file.mimetype == mimetype and file.resp_headers["ETag"] == etag and len(file) == file_size
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize(
+    "id_, required_quality, preferred_quality, codec, bandwidth, length, segments",
+    (
+        (
+            152676390,
+            AudioQuality.Normal,
+            AudioQuality.Normal,
+            "mp4a.40.5",
+            96984,
+            "PT4M17.614S",
+            64,
+        ),
+        (
+            152676390,
+            AudioQuality.High,
+            AudioQuality.High,
+            "mp4a.40.2",
+            321691,
+            "PT4M17.545S",
+            64,
+        ),
+        (
+            152676390,
+            AudioQuality.HiFi,
+            AudioQuality.HiFi,
+            "flac",
+            957766,
+            "PT4M17.499S",
+            64,
+        ),
+    ),
+)
+async def test_track_download_dash(
+    sess: TidalSession, id_, required_quality, preferred_quality, codec, bandwidth, length, segments
+):
+    track = await sess.track(id_)
+    url = await track.get_file_url(required_quality, preferred_quality)
+    mpd = dash_mpd_from_data_url(url)
+
+    rep = mpd.periods[0].adaptation_sets[0].representations[0]
+
+    assert rep.codecs == codec
+    assert rep.bandwidth == bandwidth
+    assert mpd.media_presentation_duration == length
+    assert sum(s.r if s.r else 1 for s in rep.segment_templates[0].segment_timelines[0].Ss)
 
 
 @pytest.mark.asyncio
