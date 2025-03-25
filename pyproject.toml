@@ -14,7 +14,7 @@ http-seekable-file = { git = "https://github.com/JuniorJPDJ/http-seekable-file.g
 [tool.poetry.dev-dependencies]
 pre-commit = "^4.0.0"
 pytest = "^8.0.0"
-pytest-asyncio = "^0.25.0"
+pytest-asyncio = "^0.26.0"
 
 [tool.poetry.extras]
 client_id = ["androguard"]
