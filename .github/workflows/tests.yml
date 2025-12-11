@@ -33,7 +33,7 @@ jobs:
 
       - uses: Gr1N/setup-poetry@v9
 
-      - uses: actions/cache@v4
+      - uses: actions/cache@v5
         with:
           path: ~/.cache/pypoetry/virtualenvs
           key: ${{ matrix.os }}-${{ matrix.python-version }}-poetry-${{ hashFiles('pyproject.toml') }}
